@@ -114,6 +114,7 @@ open class MainActivity : AppCompatActivity() {
         ThemeSettingsStorage.initialize(applicationContext)
         AppIconPlatform.initialize(applicationContext)
         SentrySettingsStorage.initialize(applicationContext)
+        com.nuvio.app.features.nuviotr.NuvioTrSetupStorage.initialize(applicationContext)
         SentryInitializer.start(application)
         super.onCreate(savedInstanceState)
         ProfileBiometricAuth.initialize(this)

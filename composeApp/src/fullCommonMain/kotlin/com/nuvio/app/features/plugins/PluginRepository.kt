@@ -6,6 +6,8 @@ import com.nuvio.app.features.addons.httpGetText
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.plugins.runtime.PluginRuntime
+import com.nuvio.app.features.plugins.skystream.PLUGIN_FORMAT_SKYSTREAM
+import com.nuvio.app.features.plugins.skystream.SkyStreamPackage
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.rpc
@@ -441,6 +443,9 @@ actual object PluginRepository {
         val storageProfileId = currentProfileId
         return withContext(Dispatchers.Default) {
             val payload = httpGetText(manifestUrl)
+            if (SkyStreamPackage.isRepository(payload)) {
+                return@withContext fetchSkyStreamRepository(manifestUrl, payload, previousScrapers, storageProfileId)
+            }
             val manifest = PluginManifestParser.parse(payload)
             val baseUrl = manifestUrl.substringBefore("?").removeSuffix("/manifest.json")
 
@@ -506,6 +511,56 @@ actual object PluginRepository {
             )
             repo to scrapers
         }
+    }
+
+    private suspend fun fetchSkyStreamRepository(
+        manifestUrl: String,
+        payload: String,
+        previousScrapers: Map<String, PluginScraper>,
+        storageProfileId: Int,
+    ): Pair<PluginRepositoryItem, List<PluginScraper>> {
+        val repository = SkyStreamPackage.fetchRepository(manifestUrl, payload)
+        require(repository.plugins.isNotEmpty()) {
+            if (repository.skippedCloudstream > 0) {
+                "Cloudstream (.cs3) eklentileri iOS ve bu uygulamada çalışmaz."
+            } else {
+                runBlocking { getString(Res.string.plugins_repository_install_failed) }
+            }
+        }
+        val scrapers = repository.plugins.map { plugin ->
+            val scraperId = "${manifestUrl.lowercase()}:${plugin.packageName}"
+            if (!PluginStorage.saveScraperCode(profileId = storageProfileId, scraperId = scraperId, code = plugin.code, overwrite = true)) {
+                log.w { "Failed to cache SkyStream plugin $scraperId" }
+            }
+            PluginScraper(
+                id = scraperId,
+                repositoryUrl = manifestUrl,
+                name = plugin.name,
+                description = plugin.description.orEmpty(),
+                version = plugin.version,
+                filename = plugin.sourceUrl,
+                supportedTypes = listOf("movie", "tv"),
+                enabled = previousScrapers[scraperId]?.enabled ?: true,
+                manifestEnabled = true,
+                logo = plugin.iconUrl,
+                contentLanguage = plugin.languages,
+                code = plugin.code,
+                supportsStreams = true,
+                supportsSearch = true,
+                format = PLUGIN_FORMAT_SKYSTREAM,
+            )
+        }
+        val repo = PluginRepositoryItem(
+            manifestUrl = manifestUrl,
+            name = repository.name,
+            description = repository.description,
+            version = "SkyStream",
+            scraperCount = scrapers.size,
+            lastUpdated = currentEpochMillis(),
+            isRefreshing = false,
+            errorMessage = null,
+        )
+        return repo to scrapers
     }
 
     private fun PluginManifestScraper.isSupportedOnCurrentPlatform(): Boolean {

@@ -197,6 +197,7 @@ internal object JsBindings {
                 statusText: parsed.statusText,
                 url: parsed.url,
                 headers: {
+                    raw: parsed.headers,
                     get: function(name) {
                         return parsed.headers[name.toLowerCase()] || null;
                     }

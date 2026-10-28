@@ -83,6 +83,8 @@ data class PluginScraper(
     val supportsSearch: Boolean = false,
     val supportsComments: Boolean = false,
     val catalogs: List<PluginCatalogDeclaration> = emptyList(),
+    /** `nuvio` for Nuvio JS plugins, `skystream` for SkyStream packages run through the SDK shim. */
+    val format: String = PLUGIN_FORMAT_NUVIO,
 ) {
     val hasContentSource: Boolean
         get() = catalogs.isNotEmpty() || supportsSearch
@@ -167,6 +169,7 @@ internal data class StoredPluginScraper(
     val supportsSearch: Boolean = false,
     val supportsComments: Boolean = false,
     val catalogs: List<PluginCatalogDeclaration> = emptyList(),
+    val format: String = PLUGIN_FORMAT_NUVIO,
 )
 
 internal data class RestoredPluginScraper(
@@ -211,6 +214,7 @@ internal fun PluginScraper.toStoredPluginScraper(): StoredPluginScraper =
         supportsSearch = supportsSearch,
         supportsComments = supportsComments,
         catalogs = catalogs,
+        format = format,
     )
 
 internal fun StoredPluginScraper.restorePluginScraper(
@@ -238,10 +242,13 @@ internal fun StoredPluginScraper.restorePluginScraper(
             supportsSearch = supportsSearch,
             supportsComments = supportsComments,
             catalogs = catalogs,
+            format = format,
         ),
         requiresMigration = code != null,
     )
 }
+
+const val PLUGIN_FORMAT_NUVIO = "nuvio"
 
 internal fun normalizePluginType(value: String): String =
     when (value.lowercase()) {

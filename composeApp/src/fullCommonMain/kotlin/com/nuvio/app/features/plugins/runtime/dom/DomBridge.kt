@@ -7,6 +7,8 @@ import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.select.Elements
 import com.nuvio.app.features.plugins.runtime.host.HostModule
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.random.Random
 
 internal class DomBridge : HostModule {
@@ -84,6 +86,20 @@ internal class DomBridge : HostModule {
         runtime.function("__cheerio_inner_html") { args ->
             val elementId = args.getOrNull(1)?.toString() ?: ""
             elementCache[elementId]?.html() ?: ""
+        }
+
+        // Node snapshot for DOM-style plugin APIs (SkyStream's querySelector nodes).
+        runtime.function("__dom_node_info") { args ->
+            val element = elementCache[args.getOrNull(0)?.toString() ?: ""] ?: return@function "{}"
+            buildJsonObject {
+                put("tagName", element.tagName())
+                put("textContent", element.text())
+                put("innerHTML", element.html())
+                put("outerHTML", element.outerHtml())
+                put("attributes", buildJsonObject {
+                    element.attributes().forEach { attribute -> put(attribute.key, attribute.value) }
+                })
+            }.toString()
         }
 
         runtime.function("__cheerio_attr") { args ->

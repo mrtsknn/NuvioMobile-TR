@@ -2,6 +2,7 @@ package com.nuvio.app.features.plugins
 
 import com.nuvio.app.core.logging.InAppLogger
 import com.nuvio.app.features.plugins.runtime.PluginRuntime
+import com.nuvio.app.features.plugins.skystream.PLUGIN_FORMAT_SKYSTREAM
 import com.nuvio.app.features.tmdb.TmdbService
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -29,6 +30,7 @@ import kotlinx.serialization.json.putJsonObject
 
 private const val SEARCH_CATALOG_ID = "nuviotr-search"
 private const val TMDB_MATCH_CONCURRENCY = 6
+private const val HOME_FEED_TTL_MS = 15 * 60 * 1000L
 
 /** Serves the virtual addon protocol described in [PluginAddonTransport] from installed plugins. */
 internal object PluginAddonBridge {
@@ -37,6 +39,11 @@ internal object PluginAddonBridge {
     // Plugin pages are cursor based; the addon pipeline pages by item offset (`skip`).
     private val pageTokensLock = SynchronizedObject()
     private val pageTokens = mutableMapOf<String, String>()
+
+    // SkyStream plugins return their whole home page in one call; rows share one fetch.
+    private data class HomeCategory(val id: String, val name: String, val items: List<PluginItem>)
+    private val homeFeedLock = SynchronizedObject()
+    private val homeFeeds = mutableMapOf<String, Pair<Long, List<HomeCategory>>>()
 
     @Serializable
     private data class CustomContent(
@@ -74,7 +81,7 @@ internal object PluginAddonBridge {
             .removeSuffix(".json")
         val segments = path.split('/')
         return when (segments.firstOrNull()) {
-            "manifest" -> manifestJson(scraper)
+            "manifest" -> manifestJson(scraper, declaredCatalogs(scraper))
             "catalog" -> catalogJson(
                 scraper = scraper,
                 type = segments.getOrNull(1) ?: return null,
@@ -138,7 +145,49 @@ internal object PluginAddonBridge {
         return PluginRepository.uiState.value.scrapers.firstOrNull { it.id == scraperId && it.enabled }
     }
 
-    private fun manifestJson(scraper: PluginScraper): String {
+    private suspend fun declaredCatalogs(scraper: PluginScraper): List<PluginCatalogDeclaration> {
+        if (scraper.format != PLUGIN_FORMAT_SKYSTREAM) return scraper.catalogs
+        return homeFeed(scraper).map { category ->
+            val seriesCount = category.items.count { it.type.toStremioType() == "series" }
+            PluginCatalogDeclaration(
+                id = category.id,
+                name = category.name,
+                type = if (seriesCount * 2 > category.items.size) "series" else "movie",
+            )
+        }
+    }
+
+    private suspend fun homeFeed(scraper: PluginScraper): List<HomeCategory> {
+        val now = currentEpochMillis()
+        synchronized(homeFeedLock) { homeFeeds[scraper.id] }
+            ?.takeIf { (loadedAt, _) -> now - loadedAt < HOME_FEED_TTL_MS }
+            ?.let { return it.second }
+        val raw = PluginRuntime.executeEntryPoint(
+            code = scraper.code,
+            scraperId = scraper.id,
+            functionName = "getHomeFeed",
+            argsJson = "{}",
+            emptyResultJson = """{"categories":[]}""",
+        )
+        val categories = ((runCatching { json.parseToJsonElement(raw) }.getOrNull() as? JsonObject)
+            ?.get("categories") as? JsonArray)
+            ?.mapNotNull { element ->
+                val category = element as? JsonObject ?: return@mapNotNull null
+                val id = category.string("id") ?: return@mapNotNull null
+                HomeCategory(
+                    id = id,
+                    name = category.string("name") ?: id,
+                    items = parseItemArray(category["items"] as? JsonArray),
+                )
+            }
+            .orEmpty()
+        if (categories.isNotEmpty()) {
+            synchronized(homeFeedLock) { homeFeeds[scraper.id] = now to categories }
+        }
+        return categories
+    }
+
+    private fun manifestJson(scraper: PluginScraper, catalogs: List<PluginCatalogDeclaration>): String {
         val types = buildList {
             if (scraper.supportsType("movie")) add("movie")
             if (scraper.supportsType("series")) add("series")
@@ -152,7 +201,7 @@ internal object PluginAddonBridge {
             scraper.logo?.let { put("logo", it) }
             putJsonArray("types") { types.forEach { add(it) } }
             putJsonArray("catalogs") {
-                scraper.catalogs.forEach { catalog ->
+                catalogs.forEach { catalog ->
                     addJsonObject {
                         put("type", catalog.type.toStremioType())
                         put("id", catalog.id)
@@ -214,6 +263,10 @@ internal object PluginAddonBridge {
                 emptyResultJson = """{"items":[]}""",
             )
             items = parseItems(raw).filter { it.type.toStremioType() == type }
+        } else if (scraper.format == PLUGIN_FORMAT_SKYSTREAM) {
+            if (skip > 0) return emptyCatalog()
+            // Home rows mix movies and series; every item keeps its own type.
+            items = homeFeed(scraper).firstOrNull { it.id == catalogId }?.items.orEmpty()
         } else {
             val declared = scraper.catalogs.firstOrNull { it.id == catalogId && it.type.toStremioType() == type }
                 ?: return emptyCatalog()
@@ -281,19 +334,50 @@ internal object PluginAddonBridge {
         }
     }
 
-    /** Minimal details for plugin items that have no TMDB match. */
-    private fun metaJson(scraper: PluginScraper, id: String): String? {
+    /** Details for plugin items that have no TMDB match; episodes come from the plugin's `getMeta`. */
+    private suspend fun metaJson(scraper: PluginScraper, id: String): String? {
         val (scraperId, content) = decodeCustomId(id) ?: return null
         if (scraperId != scraper.id) return null
+        val details = content.u?.let { url ->
+            val raw = PluginRuntime.executeEntryPoint(
+                code = scraper.code,
+                scraperId = scraper.id,
+                functionName = "getMeta",
+                argsJson = buildJsonObject {
+                    put("id", content.c)
+                    put("url", url)
+                    put("type", content.t)
+                }.toString(),
+                emptyResultJson = "{}",
+            )
+            runCatching { json.parseToJsonElement(raw) }.getOrNull() as? JsonObject
+        }
+        val episodes = (details?.get("episodes") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
         return buildJsonObject {
             putJsonObject("meta") {
                 put("id", id)
                 put("type", content.t)
                 put("name", content.n)
-                content.p?.let { put("poster", it) }
-                content.b?.let { put("background", it) }
-                content.d?.let { put("description", it) }
+                (content.p ?: details?.string("poster"))?.let { put("poster", it) }
+                (content.b ?: details?.string("background"))?.let { put("background", it) }
+                (details?.string("description") ?: content.d)?.let { put("description", it.decodeHtmlEntities()) }
                 content.y?.let { put("releaseInfo", it.toString()) }
+                if (content.t == "series" && episodes.isNotEmpty()) {
+                    putJsonArray("videos") {
+                        episodes.forEach { episode ->
+                            val season = (episode["season"] as? JsonPrimitive)?.intOrNull ?: 1
+                            val number = (episode["episode"] as? JsonPrimitive)?.intOrNull ?: return@forEach
+                            addJsonObject {
+                                put("id", "$id:$season:$number")
+                                put("season", season)
+                                put("episode", number)
+                                put("title", episode.string("name") ?: "$season. Sezon $number. Bölüm")
+                                episode.string("description")?.let { put("overview", it) }
+                                episode.string("thumbnail")?.let { put("thumbnail", it) }
+                            }
+                        }
+                    }
+                }
             }
         }.toString()
     }
@@ -347,7 +431,11 @@ internal object PluginAddonBridge {
     private fun parseItems(raw: String): List<PluginItem> {
         val root = runCatching { json.parseToJsonElement(raw) }.getOrNull() as? JsonObject ?: return emptyList()
         // Accept the Nuvio `items` contract and Stremio-compatible plugins' `metas` contract.
-        val elements = (root["items"] ?: root["metas"]) as? JsonArray ?: return emptyList()
+        return parseItemArray((root["items"] ?: root["metas"]) as? JsonArray)
+    }
+
+    private fun parseItemArray(elements: JsonArray?): List<PluginItem> {
+        if (elements == null) return emptyList()
         return elements.mapNotNull { element ->
             val value = element as? JsonObject ?: return@mapNotNull null
             val externalIds = value["externalIds"] as? JsonObject

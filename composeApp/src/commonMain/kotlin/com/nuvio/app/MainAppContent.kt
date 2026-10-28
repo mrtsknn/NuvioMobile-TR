@@ -313,6 +313,9 @@ internal fun MainAppContent(
             AddonRepository.initialize()
             AddonRepository.uiState
         }.collectAsStateWithLifecycle()
+        LaunchedEffect(Unit) {
+            com.nuvio.app.features.nuviotr.NuvioTrFirstRun.installDefaultsIfNeeded()
+        }
         val libraryUiState by remember {
             LibraryRepository.ensureLoaded()
             LibraryRepository.uiState

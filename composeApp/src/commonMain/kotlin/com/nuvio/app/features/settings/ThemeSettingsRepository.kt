@@ -121,7 +121,7 @@ object ThemeSettingsRepository {
         )
         NativeTabBridge.publishTabBarBehavior(NuvioTabBarBehavior.Default)
         NativeTabBridge.publishLiquidGlassEnabled(NuvioTabBarBehavior.Default.isEnabled)
-        _selectedAppLanguage.value = AppLanguage.DEVICE
+        _selectedAppLanguage.value = AppLanguage.TURKISH
         _navBarGlowEnabled.value = true
         _navBarDefaultIconColorEnabled.value = false
         _navBarDefaultIconColor.value = DEFAULT_NAV_BAR_ICON_COLOR
@@ -159,7 +159,8 @@ object ThemeSettingsRepository {
             ThemeSettingsStorage.loadDynamicArtworkBackgroundEnabled() ?: false
         _showCatalogAccentEnabled.value =
             ThemeSettingsStorage.loadShowCatalogAccentEnabled() ?: false
-        val appLanguage = AppLanguage.fromCode(ThemeSettingsStorage.loadSelectedAppLanguage())
+        // Nuvio TR starts in Turkish until the person picks another language.
+        val appLanguage = AppLanguage.fromCode(ThemeSettingsStorage.loadSelectedAppLanguage() ?: AppLanguage.TURKISH.code)
         ThemeSettingsStorage.applySelectedAppLanguage(appLanguage.code)
         _selectedAppLanguage.value = appLanguage
         _navBarGlowEnabled.value = ThemeSettingsStorage.loadNavBarGlowEnabled() ?: true
