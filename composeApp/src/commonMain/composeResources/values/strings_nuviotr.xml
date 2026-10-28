@@ -6,4 +6,20 @@
     <string name="nuviotr_button_install">Install</string>
     <string name="nuviotr_button_installing">Installing…</string>
     <string name="nuviotr_badge_installed">Installed</string>
+    <string name="nuviotr_capability_catalog">Catalog</string>
+    <string name="nuviotr_capability_search">Search</string>
+    <string name="nuviotr_capability_comments">Comments</string>
+    <string name="nuviotr_button_add_to_home">Add catalogs to Home</string>
+    <string name="nuviotr_badge_on_home">On Home</string>
+    <string name="nuviotr_comments_title">Comments from %1$s</string>
+    <string name="nuviotr_comments_empty">No comments yet.</string>
+    <string name="nuviotr_comments_loading">Loading comments…</string>
+    <string name="nuviotr_message_ok">OK</string>
+    <string name="nuviotr_collections_title">Recommended Turkish collections (NuvioTR)</string>
+    <string name="nuviotr_button_view">View</string>
+    <string name="nuviotr_browser_title">NuvioTR</string>
+    <string name="nuviotr_browser_subtitle">Turkish catalogs, plugins and collections</string>
+    <string name="nuviotr_collection_items">%1$d collections</string>
+    <string name="nuviotr_preview_providers">Providers: %1$s</string>
+    <string name="nuviotr_button_remove">Remove</string>
 </resources>

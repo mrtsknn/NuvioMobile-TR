@@ -77,6 +77,11 @@ actual object PluginRepository {
 
     private var initialized = false
     private var currentProfileId = 1
+
+    init {
+        PluginAddonTransport.handler = PluginAddonBridge::handle
+        PluginAddonTransport.commentsHandler = PluginAddonBridge::comments
+    }
     private val activeRefreshJobs = mutableMapOf<String, Job>()
     private val activeRefreshJobsLock = SynchronizedObject()
     private val persistenceGeneration = atomic(0L)
@@ -329,7 +334,7 @@ actual object PluginRepository {
         initialize()
         if (!_uiState.value.pluginsEnabled) return emptyList()
         return _uiState.value.scrapers.filter { scraper ->
-            scraper.enabled && scraper.supportsType(type)
+            scraper.enabled && scraper.supportsStreams && scraper.supportsType(type)
         }
     }
 
@@ -364,7 +369,29 @@ actual object PluginRepository {
         season = season,
         episode = episode,
         respectSearchPause = true,
+        contentUrl = PluginAddonBridge.contentUrlFor(scraper, tmdbId, mediaType),
     )
+
+    /** Streams for an item that only the plugin itself can identify (no TMDB match). */
+    internal suspend fun executeScraperForContent(
+        scraper: PluginScraper,
+        tmdbId: String,
+        mediaType: String,
+        season: Int?,
+        episode: Int?,
+        contentUrl: String?,
+    ): Result<List<PluginRuntimeResult>> = runCatching {
+        PluginRuntime.executePlugin(
+            code = scraper.code,
+            tmdbId = tmdbId,
+            mediaType = normalizePluginType(mediaType),
+            season = season,
+            episode = episode,
+            scraperId = scraper.id,
+            respectSearchPause = false,
+            contentUrl = contentUrl,
+        )
+    }
 
     private suspend fun executeScraperInternal(
         scraper: PluginScraper,
@@ -373,6 +400,7 @@ actual object PluginRepository {
         season: Int?,
         episode: Int?,
         respectSearchPause: Boolean,
+        contentUrl: String? = null,
     ): Result<List<PluginRuntimeResult>> {
         val resolvedTmdbId = resolvePluginTmdbId(
             tmdbId = tmdbId,
@@ -388,6 +416,7 @@ actual object PluginRepository {
                 episode = episode,
                 scraperId = scraper.id,
                 respectSearchPause = respectSearchPause,
+                contentUrl = contentUrl,
             )
         }
     }
@@ -457,6 +486,10 @@ actual object PluginRepository {
                             contentLanguage = info.contentLanguage ?: emptyList(),
                             formats = info.formats ?: info.supportedFormats,
                             code = code,
+                            supportsStreams = info.supportsStreams,
+                            supportsSearch = info.supportsSearch,
+                            supportsComments = info.supportsComments,
+                            catalogs = info.catalogs,
                         )
                     }.getOrNull()
                 }

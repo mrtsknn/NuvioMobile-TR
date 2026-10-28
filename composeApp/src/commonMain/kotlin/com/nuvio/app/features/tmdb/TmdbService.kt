@@ -14,6 +14,7 @@ object TmdbService {
     private val json = Json { ignoreUnknownKeys = true }
     private val imdbToTmdbCache = linkedMapOf<String, String>()
     private val tmdbToImdbCache = linkedMapOf<String, String>()
+    private val titleSearchCache = linkedMapOf<String, String>()
     private val cacheMutex = Mutex()
 
     suspend fun ensureTmdbId(videoId: String, mediaType: String, fallbackImdbId: String? = null): String? {
@@ -129,6 +130,38 @@ object TmdbService {
         }.getOrNull()
     }
 
+    /**
+     * Finds the TMDB id of a title by name (and year when known). Used for plugin catalog items,
+     * which only carry the provider's own id and display metadata.
+     */
+    suspend fun searchTmdbId(title: String, year: Int?, mediaType: String): String? {
+        val query = title.trim().takeIf { it.isNotBlank() } ?: return null
+        val apiKey = TmdbSettingsRepository.effectiveApiKey()
+        val normalizedType = normalizeMediaType(mediaType)
+        val cacheKey = "${query.lowercase()}|${year ?: ""}|$normalizedType"
+        cacheMutex.withLock {
+            titleSearchCache[cacheKey]?.let { return it.ifBlank { null } }
+        }
+        val endpoint = if (normalizedType == "tv") "search/tv" else "search/movie"
+        val yearParam = if (normalizedType == "tv") "first_air_date_year" else "year"
+        suspend fun search(withYear: Boolean): Int? = fetch<TmdbSearchResponse>(
+            endpoint = endpoint,
+            apiKey = apiKey,
+            query = buildMap {
+                put("query", query.encodeTmdbQuery())
+                put("language", "tr-TR")
+                if (withYear && year != null) put(yearParam, year.toString())
+            },
+        )?.results?.firstOrNull()?.id?.takeIf { it > 0 }
+
+        val resultId = (if (year != null) search(withYear = true) else null) ?: search(withYear = false)
+        cacheMutex.withLock {
+            titleSearchCache[cacheKey] = resultId?.toString().orEmpty()
+        }
+        InAppLogger.debug("Metadata/TMDB", "searchTmdbId type=$normalizedType year=${year ?: -1} found=${resultId != null}")
+        return resultId?.toString()
+    }
+
     internal fun normalizeMediaType(mediaType: String): String =
         when (mediaType.trim().lowercase()) {
             "movie", "film" -> "movie"
@@ -173,3 +206,23 @@ private data class TmdbExternalResult(
 private data class TmdbExternalIdsResponse(
     @SerialName("imdb_id") val imdbId: String? = null,
 )
+
+@Serializable
+private data class TmdbSearchResponse(
+    val results: List<TmdbExternalResult> = emptyList(),
+)
+
+private fun String.encodeTmdbQuery(): String =
+    buildString {
+        this@encodeTmdbQuery.encodeToByteArray().forEach { byte ->
+            val value = byte.toInt() and 0xFF
+            val char = value.toChar()
+            if (char in 'a'..'z' || char in 'A'..'Z' || char in '0'..'9' || char in "-_.~") {
+                append(char)
+            } else {
+                append('%')
+                append("0123456789ABCDEF"[value shr 4])
+                append("0123456789ABCDEF"[value and 0x0F])
+            }
+        }
+    }

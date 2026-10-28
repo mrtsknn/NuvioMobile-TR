@@ -6,4 +6,20 @@
     <string name="nuviotr_button_install">Kur</string>
     <string name="nuviotr_button_installing">Kuruluyor…</string>
     <string name="nuviotr_badge_installed">Kurulu</string>
+    <string name="nuviotr_capability_catalog">Katalog</string>
+    <string name="nuviotr_capability_search">Arama</string>
+    <string name="nuviotr_capability_comments">Yorum</string>
+    <string name="nuviotr_button_add_to_home">Kataloglarını ana sayfaya ekle</string>
+    <string name="nuviotr_badge_on_home">Ana sayfada</string>
+    <string name="nuviotr_comments_title">%1$s yorumları</string>
+    <string name="nuviotr_comments_empty">Henüz yorum yok.</string>
+    <string name="nuviotr_comments_loading">Yorumlar yükleniyor…</string>
+    <string name="nuviotr_message_ok">Tamam</string>
+    <string name="nuviotr_collections_title">Önerilen Türkçe koleksiyonlar (NuvioTR)</string>
+    <string name="nuviotr_button_view">İncele</string>
+    <string name="nuviotr_browser_title">NuvioTR</string>
+    <string name="nuviotr_browser_subtitle">Türkçe kataloglar, eklentiler ve koleksiyonlar</string>
+    <string name="nuviotr_collection_items">%1$d koleksiyon</string>
+    <string name="nuviotr_preview_providers">Sağlayıcılar: %1$s</string>
+    <string name="nuviotr_button_remove">Kaldır</string>
 </resources>

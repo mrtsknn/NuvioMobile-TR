@@ -1,5 +1,6 @@
 package com.nuvio.app.features.details
 
+import com.nuvio.app.features.nuviotr.PluginSiteCommentsSection
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -2555,6 +2556,7 @@ private fun ConfiguredMetaSections(
                         horizontalScrollPadding = horizontalScrollPadding,
                     )
                 }
+                PluginSiteCommentsSection(id = meta.id, type = meta.type, horizontalPadding = horizontalScrollPadding)
             }
             MetaScreenSectionKey.TRAILERS -> {
                 if (hasTrailersSection) {

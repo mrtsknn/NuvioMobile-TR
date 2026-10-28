@@ -47,6 +47,7 @@ internal object PluginRuntime {
         episode: Int?,
         scraperId: String,
         respectSearchPause: Boolean = true,
+        contentUrl: String? = null,
     ): List<PluginRuntimeResult> = withContext(Dispatchers.Default) {
         val scraperSettingsJson = PluginStorage.loadScraperSettings(scraperId) ?: "{}"
         val scraperSettingsMap = runCatching {
@@ -61,21 +62,103 @@ internal object PluginRuntime {
 
         runCatching {
             withTimeout(PLUGIN_TIMEOUT_MS) {
-                executePluginInternal(
+                val rawResult = executePluginInternal(
                     code = code,
-                    tmdbId = tmdbId,
-                    mediaType = mediaType,
-                    season = season,
-                    episode = episode,
                     scraperId = scraperId,
                     scraperSettings = scraperSettingsMap,
+                    callCode = streamsCallCode(tmdbId, mediaType, season, episode, contentUrl),
                 )
+                parseJsonResults(rawResult).also { parsedResults ->
+                    InAppLogger.debug(
+                        "Plugins/Runtime",
+                        "Parsed scraper=$scraperId rawLength=${rawResult.length} results=${parsedResults.size}",
+                    )
+                }
             }
         }.onSuccess { results ->
             InAppLogger.info("Plugins/Runtime", "Completed scraper=$scraperId results=${results.size}")
         }.onFailure { error ->
             InAppLogger.warn("Plugins/Runtime", "Failed scraper=$scraperId error=${InAppLogger.throwableSummary(error)}")
         }.getOrThrow()
+    }
+
+    /**
+     * Runs an optional plugin entry point (`getCatalog`, `search`, `comments`) with a single
+     * JSON argument object and returns the plugin's JSON response unchanged.
+     * A missing entry point or a thrown error yields [emptyResultJson].
+     */
+    suspend fun executeEntryPoint(
+        code: String,
+        scraperId: String,
+        functionName: String,
+        argsJson: String,
+        emptyResultJson: String,
+    ): String = withContext(Dispatchers.Default) {
+        val scraperSettingsMap = runCatching {
+            json.decodeFromString<Map<String, JsonElement>>(PluginStorage.loadScraperSettings(scraperId) ?: "{}")
+        }.getOrElse { emptyMap() }
+        val emptyResultArg = JsonPrimitive(emptyResultJson).toString()
+        InAppLogger.info("Plugins/Runtime", "Execute $functionName scraper=$scraperId")
+        runCatching {
+            withTimeout(PLUGIN_TIMEOUT_MS) {
+                executePluginInternal(
+                    code = code,
+                    scraperId = scraperId,
+                    scraperSettings = scraperSettingsMap,
+                    callCode = """
+                        (async function() {
+                            try {
+                                var entry = module.exports.$functionName || globalThis.$functionName;
+                                if (typeof entry !== 'function') {
+                                    __capture_result($emptyResultArg);
+                                    return;
+                                }
+                                var result = await entry(JSON.parse(__get_call_args()));
+                                __capture_result(result == null ? $emptyResultArg : JSON.stringify(result));
+                            } catch (e) {
+                                console.error("$functionName error:", e && e.message ? e.message : e);
+                                __capture_result($emptyResultArg);
+                            }
+                        })();
+                    """.trimIndent(),
+                    callArgsJson = argsJson,
+                )
+            }
+        }.onFailure { error ->
+            InAppLogger.warn("Plugins/Runtime", "Failed $functionName scraper=$scraperId error=${InAppLogger.throwableSummary(error)}")
+        }.getOrDefault(emptyResultJson)
+    }
+
+    private fun streamsCallCode(
+        tmdbId: String,
+        mediaType: String,
+        season: Int?,
+        episode: Int?,
+        contentUrl: String?,
+    ): String {
+        val tmdbIdArg = JsonPrimitive(tmdbId).toString()
+        val mediaTypeArg = JsonPrimitive(mediaType).toString()
+        val seasonArg = season?.toString() ?: "undefined"
+        val episodeArg = episode?.toString() ?: "undefined"
+        // Catalog plugins receive the provider page URL of the item as a fifth argument.
+        val urlArg = contentUrl?.let { JsonPrimitive(it).toString() } ?: "undefined"
+        return """
+            (async function() {
+                try {
+                    var getStreams = module.exports.getStreams || globalThis.getStreams;
+                    if (!getStreams) {
+                        console.error("getStreams function not found on module.exports or globalThis");
+                        __capture_result(JSON.stringify([]));
+                        return;
+                    }
+                    var result = await getStreams($tmdbIdArg, $mediaTypeArg, $seasonArg, $episodeArg, $urlArg);
+                    __capture_result(JSON.stringify(result || []));
+                } catch (e) {
+                    console.error("getStreams error:", e && e.message ? e.message : e, e && e.stack ? e.stack : "");
+                    __capture_result(JSON.stringify([]));
+                }
+            })();
+        """.trimIndent()
     }
 
     suspend fun getPluginSettingsLayout(
@@ -134,13 +217,11 @@ internal object PluginRuntime {
 
     private suspend fun executePluginInternal(
         code: String,
-        tmdbId: String,
-        mediaType: String,
-        season: Int?,
-        episode: Int?,
         scraperId: String,
         scraperSettings: Map<String, JsonElement>,
-    ): List<PluginRuntimeResult> {
+        callCode: String,
+        callArgsJson: String = "{}",
+    ): String {
         val jsRuntime = JsRuntime()
         val deferred = CompletableDeferred<String>()
 
@@ -150,6 +231,7 @@ internal object PluginRuntime {
                 HostFunctions(
                     scraperId = scraperId,
                     scraperSettingsJson = JsonObject(scraperSettings).toString(),
+                    callArgsJson = callArgsJson,
                     onResult = { deferred.complete(it) },
                 ),
             )
@@ -166,6 +248,15 @@ internal object PluginRuntime {
 
                 val settingsJson = JsonObject(scraperSettings).toString()
                 evaluate<Any?>(JsBindings.staticPolyfillCode)
+                // Host-owned notification API. It has no callback so plugin code never blocks on the UI.
+                evaluate<Any?>(
+                    """
+                    globalThis.Nuvio = globalThis.Nuvio || {};
+                    globalThis.Nuvio.showMessage = function(message, title) {
+                        __show_plugin_message(String(message || ''), title == null ? null : String(title));
+                    };
+                    """.trimIndent(),
+                )
 
                 val wrappedCode = """
                     var module = { exports: {} };
@@ -176,40 +267,13 @@ internal object PluginRuntime {
                 """.trimIndent()
                 evaluate<Any?>(wrappedCode)
 
-                val tmdbIdArg = JsonPrimitive(tmdbId).toString()
-                val mediaTypeArg = JsonPrimitive(mediaType).toString()
-                val seasonArg = season?.toString() ?: "undefined"
-                val episodeArg = episode?.toString() ?: "undefined"
-                val callCode = """
-                    (async function() {
-                        try {
-                            var getStreams = module.exports.getStreams || globalThis.getStreams;
-                            if (!getStreams) {
-                                console.error("getStreams function not found on module.exports or globalThis");
-                                __capture_result(JSON.stringify([]));
-                                return;
-                            }
-                            var result = await getStreams($tmdbIdArg, $mediaTypeArg, $seasonArg, $episodeArg);
-                            __capture_result(JSON.stringify(result || []));
-                        } catch (e) {
-                            console.error("getStreams error:", e && e.message ? e.message : e, e && e.stack ? e.stack : "");
-                            __capture_result(JSON.stringify([]));
-                        }
-                    })();
-                """.trimIndent()
                 evaluate<Any?>(callCode)
                 
                 deferred.await()
             }
             
             // Result is captured inside use block, but returned outside to satisfy compiler
-            val rawResult = deferred.await()
-            val parsedResults = parseJsonResults(rawResult)
-            InAppLogger.debug(
-                "Plugins/Runtime",
-                "Parsed scraper=$scraperId rawLength=${rawResult.length} results=${parsedResults.size}",
-            )
-            return parsedResults
+            return deferred.await()
         } finally {
             domBridge.clear()
         }

@@ -38,6 +38,19 @@ data class PluginManifestScraper(
     @SerialName("supportedFormats") val supportedFormats: List<String>? = null,
     @SerialName("supportsExternalPlayer") val supportsExternalPlayer: Boolean? = null,
     val limited: Boolean? = null,
+    @SerialName("supportsStreams") val supportsStreams: Boolean = true,
+    @SerialName("supportsSearch") val supportsSearch: Boolean = false,
+    @SerialName("supportsComments") val supportsComments: Boolean = false,
+    val catalogs: List<PluginCatalogDeclaration> = emptyList(),
+)
+
+/** A catalog a plugin declares in its manifest; served through the plugin's `getCatalog` entry point. */
+@Serializable
+data class PluginCatalogDeclaration(
+    val id: String,
+    val name: String,
+    val type: String,
+    @SerialName("supportsPagination") val supportsPagination: Boolean = false,
 )
 
 data class PluginRepositoryItem(
@@ -66,7 +79,14 @@ data class PluginScraper(
     val contentLanguage: List<String> = emptyList(),
     val formats: List<String>? = null,
     val code: String,
+    val supportsStreams: Boolean = true,
+    val supportsSearch: Boolean = false,
+    val supportsComments: Boolean = false,
+    val catalogs: List<PluginCatalogDeclaration> = emptyList(),
 ) {
+    val hasContentSource: Boolean
+        get() = catalogs.isNotEmpty() || supportsSearch
+
     fun supportsType(type: String): Boolean {
         val normalizedType = normalizePluginType(type)
         return supportedTypes.map { normalizePluginType(it) }.contains(normalizedType)
@@ -143,6 +163,10 @@ internal data class StoredPluginScraper(
     val contentLanguage: List<String> = emptyList(),
     val formats: List<String>? = null,
     val code: String? = null,
+    val supportsStreams: Boolean = true,
+    val supportsSearch: Boolean = false,
+    val supportsComments: Boolean = false,
+    val catalogs: List<PluginCatalogDeclaration> = emptyList(),
 )
 
 internal data class RestoredPluginScraper(
@@ -183,6 +207,10 @@ internal fun PluginScraper.toStoredPluginScraper(): StoredPluginScraper =
         contentLanguage = contentLanguage,
         formats = formats,
         code = null,
+        supportsStreams = supportsStreams,
+        supportsSearch = supportsSearch,
+        supportsComments = supportsComments,
+        catalogs = catalogs,
     )
 
 internal fun StoredPluginScraper.restorePluginScraper(
@@ -206,6 +234,10 @@ internal fun StoredPluginScraper.restorePluginScraper(
             contentLanguage = contentLanguage,
             formats = formats,
             code = resolvedCode,
+            supportsStreams = supportsStreams,
+            supportsSearch = supportsSearch,
+            supportsComments = supportsComments,
+            catalogs = catalogs,
         ),
         requiresMigration = code != null,
     )

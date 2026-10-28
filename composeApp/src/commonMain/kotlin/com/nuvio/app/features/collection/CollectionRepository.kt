@@ -149,6 +149,25 @@ object CollectionRepository {
         }
     }
 
+    /** Adds or replaces the collections in [jsonString] by id, keeping every other collection. */
+    fun mergeFromJson(jsonString: String): Result<List<Collection>> {
+        return runCatching {
+            val validation = validateJson(jsonString)
+            if (!validation.valid) {
+                throw IllegalArgumentException(validation.error.orEmpty())
+            }
+            ensureLoaded()
+            val imported = json.decodeFromString<List<Collection>>(jsonString).deduplicatedById()
+            var merged = _collections.value
+            imported.forEach { collection ->
+                merged = merged.upsertCollectionById(CollectionMobileSettingsRepository.applyToCollection(collection))
+            }
+            _collections.value = merged
+            persist()
+            imported
+        }
+    }
+
     fun validateJson(jsonString: String): ValidationResult {
         if (jsonString.isBlank()) {
             return ValidationResult(

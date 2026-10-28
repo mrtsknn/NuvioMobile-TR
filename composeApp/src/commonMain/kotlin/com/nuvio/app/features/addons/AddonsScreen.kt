@@ -143,6 +143,7 @@ internal fun AddonsSettingsPageContent(
         )
 
         NuvioTrRecommendedSection(kind = NuvioTrKind.Catalogs)
+        NuvioTrRecommendedSection(kind = NuvioTrKind.Collections)
 
         SectionHeader(stringResource(Res.string.addons_section_installed))
         if (uiState.addons.isEmpty()) {
