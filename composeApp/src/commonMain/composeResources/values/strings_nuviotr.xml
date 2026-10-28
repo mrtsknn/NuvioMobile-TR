@@ -1,0 +1,9 @@
+<resources>
+    <string name="nuviotr_catalogs_title">Recommended Turkish catalogs (NuvioTR)</string>
+    <string name="nuviotr_plugins_title">Recommended Turkish plugins (NuvioTR)</string>
+    <string name="nuviotr_loading">Loading the NuvioTR list…</string>
+    <string name="nuviotr_load_failed">Could not load the NuvioTR list. Check your connection.</string>
+    <string name="nuviotr_button_install">Install</string>
+    <string name="nuviotr_button_installing">Installing…</string>
+    <string name="nuviotr_badge_installed">Installed</string>
+</resources>

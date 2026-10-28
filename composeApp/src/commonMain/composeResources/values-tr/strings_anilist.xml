@@ -1,0 +1,30 @@
+<resources>
+    <string name="tracking_source_anilist">AniList</string>
+    <string name="settings_anilist_anime_section">Anime</string>
+    <string name="settings_anilist_library_description">AniList anime listelerin: İzleniyor, Planlanan, Tamamlandı, Duraklatıldı, Bırakıldı ve Tekrar İzleniyor.</string>
+    <string name="settings_anilist_progress_description">AniList İzleniyor listenden İzlemeye Devam Et ve Sıradaki.</string>
+    <string name="library_anilist_title">AniList Kitaplığı</string>
+    <string name="library_anilist_load_failed">AniList kitaplığın yüklenemedi</string>
+    <string name="library_anilist_empty_title">AniList kitaplığın boş</string>
+    <string name="library_anilist_empty_message">Burada görmek için AniList listelerine anime ekle.</string>
+    <string name="settings_anilist_connect">AniList'i bağla</string>
+    <string name="settings_anilist_connected_as">%1$s olarak bağlı</string>
+    <string name="settings_anilist_connected_description">Anime listelerini, bölüm ilerlemeni, puanlarını ve İzlemeye Devam Et'i AniList ile senkronla.</string>
+    <string name="settings_anilist_sign_in_description">Anime listelerini, bölüm ilerlemeni, puanlarını ve İzlemeye Devam Et'i senkronlamak için AniList'i bağla.</string>
+    <string name="settings_anilist_finish_sign_in">Girişi tamamla</string>
+    <string name="settings_anilist_approval_description">Tarayıcında Nuvio'yu onayla. Otomatik olarak uygulamaya geri yönlendirileceksin.</string>
+    <string name="settings_anilist_open_login">Giriş sayfasını aç</string>
+    <string name="settings_anilist_disconnect">AniList bağlantısını kes</string>
+    <string name="settings_anilist_missing_credentials">AniList bağlantısı bu sürümde kullanılamıyor.</string>
+    <string name="settings_anilist_sync_now">Şimdi senkronla</string>
+    <string name="settings_anilist_visit">AniList'i ziyaret et</string>
+    <string name="settings_anilist_disconnect_description">Bu profilden izleme güncellemelerini göndermeyi durdur. AniList listelerin korunur.</string>
+    <string name="settings_anilist_account_fallback">AniList kullanıcısı</string>
+    <string name="settings_anilist_syncing">AniList listelerin senkronlanıyor…</string>
+    <string name="settings_anilist_last_synced">Son senkronizasyon: %1$s</string>
+    <string name="settings_anilist_auth_denied">Bağlantı reddedildi. Hesabını bağlamak için tekrar dene.</string>
+    <string name="settings_anilist_auth_invalid">AniList geçersiz bir giriş yanıtı döndürdü. Lütfen tekrar dene.</string>
+    <string name="settings_anilist_auth_revoked">AniList bağlantının süresi doldu veya iptal edildi. Senkronizasyona devam etmek için tekrar bağlan.</string>
+    <string name="settings_anilist_unavailable">AniList ile senkronlanamadı. Lütfen tekrar dene.</string>
+    <string name="settings_anilist_rate_limited">AniList’in istek sınırına ulaşıldı. Senkronizasyon kısa süre sonra devam edecek.</string>
+</resources>

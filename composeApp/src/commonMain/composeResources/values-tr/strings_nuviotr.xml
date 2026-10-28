@@ -1,0 +1,9 @@
+<resources>
+    <string name="nuviotr_catalogs_title">Önerilen Türkçe kataloglar (NuvioTR)</string>
+    <string name="nuviotr_plugins_title">Önerilen Türkçe eklentiler (NuvioTR)</string>
+    <string name="nuviotr_loading">NuvioTR listesi yükleniyor…</string>
+    <string name="nuviotr_load_failed">NuvioTR listesi yüklenemedi. Bağlantını kontrol et.</string>
+    <string name="nuviotr_button_install">Kur</string>
+    <string name="nuviotr_button_installing">Kuruluyor…</string>
+    <string name="nuviotr_badge_installed">Kurulu</string>
+</resources>

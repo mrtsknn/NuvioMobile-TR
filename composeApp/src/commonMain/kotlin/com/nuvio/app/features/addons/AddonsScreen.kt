@@ -44,6 +44,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.features.nuviotr.NuvioTrKind
+import com.nuvio.app.features.nuviotr.NuvioTrRecommendedSection
 import com.nuvio.app.core.build.AppFeaturePolicy
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioIconActionButton
@@ -139,6 +141,8 @@ internal fun AddonsSettingsPageContent(
                 }
             },
         )
+
+        NuvioTrRecommendedSection(kind = NuvioTrKind.Catalogs)
 
         SectionHeader(stringResource(Res.string.addons_section_installed))
         if (uiState.addons.isEmpty()) {

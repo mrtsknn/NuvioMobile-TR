@@ -1,0 +1,33 @@
+<resources>
+    <string name="tracking_source_wetrakr">WeTrakr</string>
+    <string name="settings_wetrakr_library_description">WeTrakr listelerin: Planlanan, İzlenen, Bekleyen, İzlenmiş, Duraklatılan ve Bırakılan.</string>
+    <string name="settings_wetrakr_progress_description">WeTrakr oynatma ve izlenen bölümlerinden İzlemeye Devam Et ve Sıradaki.</string>
+    <string name="library_wetrakr_title">WeTrakr Kitaplığı</string>
+    <string name="library_wetrakr_load_failed">WeTrakr kitaplığın yüklenemedi</string>
+    <string name="library_wetrakr_empty_title">WeTrakr kitaplığın boş</string>
+    <string name="library_wetrakr_empty_message">Burada görmek için WeTrakr listelerine film ve dizi ekle.</string>
+    <string name="settings_wetrakr_connect">WeTrakr'a Bağlan</string>
+    <string name="settings_wetrakr_connected_as">%1$s olarak bağlandı</string>
+    <string name="settings_wetrakr_connected_description">Listelerini, izleme geçmişini, puanlarını, scrobble'larını ve İzlemeye Devam Et'i WeTrakr ile senkronize et.</string>
+    <string name="settings_wetrakr_sign_in_description">Listelerini, izleme geçmişini, puanlarını, scrobble'larını ve İzlemeye Devam Et'i senkronize etmek için WeTrakr'a bağlan.</string>
+    <string name="settings_wetrakr_finish_sign_in">Girişi tamamla</string>
+    <string name="settings_wetrakr_approval_description">WeTrakr etkinleştirme sayfasını aç ve bu kodu gir. Onayladığında Nuvio otomatik olarak bağlanır.</string>
+    <string name="settings_wetrakr_open_login">Etkinleştirme sayfasını aç</string>
+    <string name="settings_wetrakr_disconnect">WeTrakr Bağlantısını Kes</string>
+    <string name="settings_wetrakr_missing_credentials">WeTrakr bağlantısı bu sürümde kullanılamıyor.</string>
+    <string name="settings_wetrakr_sync_now">Şimdi senkronize et</string>
+    <string name="settings_wetrakr_visit">WeTrakr'ı Ziyaret Et</string>
+    <string name="settings_wetrakr_disconnect_description">Bu profilden izleme güncellemelerini göndermeyi durdur. WeTrakr listelerin ve geçmişin korunur.</string>
+    <string name="settings_wetrakr_account_fallback">WeTrakr kullanıcısı</string>
+    <string name="settings_wetrakr_syncing">WeTrakr listelerin senkronize ediliyor…</string>
+    <string name="settings_wetrakr_last_synced">Son senkronizasyon: %1$s</string>
+    <string name="settings_wetrakr_auth_denied">Bağlantı reddedildi. Hesabını bağlamak için tekrar dene.</string>
+    <string name="settings_wetrakr_auth_expired">Etkinleştirme kodunun süresi doldu. Yeni kod almak için tekrar dene.</string>
+    <string name="settings_wetrakr_auth_failed">Girişi başlatmak için WeTrakr'a ulaşılamadı. Lütfen tekrar dene.</string>
+    <string name="settings_wetrakr_auth_rate_limited">Çok fazla giriş denemesi. 15 dakika bekleyip tekrar dene.</string>
+    <string name="settings_wetrakr_app_suspended">WeTrakr bu uygulamayı askıya aldı. Lütfen daha sonra tekrar dene.</string>
+    <string name="settings_wetrakr_auth_revoked">WeTrakr bağlantının süresi doldu veya iptal edildi. Senkronizasyonu sürdürmek için yeniden bağlan.</string>
+    <string name="settings_wetrakr_unavailable">WeTrakr ile senkronize edilemedi. Lütfen tekrar dene.</string>
+    <string name="settings_wetrakr_rate_limited">WeTrakr istek sınırına ulaşıldı. Senkronizasyon birazdan devam edecek.</string>
+    <string name="settings_wetrakr_plan_limit">Bunun için WeTrakr VIP gerekli veya planının sınırlarını aşıyor.</string>
+</resources>
