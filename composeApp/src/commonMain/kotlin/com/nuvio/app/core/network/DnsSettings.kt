@@ -13,7 +13,7 @@ enum class DnsProvider(val storageId: String, val displayName: String) {
     ;
 
     companion object {
-        fun fromStorage(id: String?): DnsProvider = entries.firstOrNull { it.storageId == id } ?: SYSTEM
+        fun fromStorage(id: String?): DnsProvider = entries.firstOrNull { it.storageId == id } ?: CLOUDFLARE
     }
 }
 

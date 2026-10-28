@@ -1142,6 +1142,12 @@ fun HomeScreen(
                                         modifier = Modifier.padding(horizontal = 16.dp),
                                         title = stringResource(Res.string.home_empty_no_sources_title),
                                         message = stringResource(Res.string.home_empty_no_sources_message),
+                                        actionLabel = stringResource(Res.string.action_retry),
+                                        onActionClick = {
+                                            NetworkStatusRepository.requestRefresh(force = true)
+                                            com.nuvio.app.features.nuviotr.NuvioTrFirstRun.installStarterSources(force = true)
+                                            AddonRepository.refreshAll()
+                                        },
                                     )
                                 }
                             }

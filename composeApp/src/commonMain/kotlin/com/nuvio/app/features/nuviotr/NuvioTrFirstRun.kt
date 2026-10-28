@@ -7,6 +7,7 @@ import com.nuvio.app.features.plugins.PluginRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 internal expect object NuvioTrSetupStorage {
@@ -35,24 +36,65 @@ object NuvioTrFirstRun {
     private var started = false
 
     fun installDefaultsIfNeeded() {
-        if (started || NuvioTrSetupStorage.isDefaultSourcesInstalled()) return
+        if (started) return
         started = true
         scope.launch {
-            AddonRepository.initialize()
-            PluginRepository.initialize()
-            val hasSources = AddonRepository.uiState.value.addons.isNotEmpty() ||
-                PluginRepository.uiState.value.repositories.isNotEmpty()
-            if (!hasSources) {
-                InAppLogger.info("NuvioTR/FirstRun", "Installing Turkish starter sources")
-                (listOf(CINEMETA_URL) + defaultCatalogs).forEach { url -> AddonRepository.addAddon(url) }
-                defaultPluginRepositories.forEach { url ->
-                    val result = PluginRepository.addRepository(url)
-                    if (result is AddPluginRepositoryResult.Success) {
-                        addPluginContentSourcesToHome(result.repository.manifestUrl)
+            installStarterSourcesInternal(force = false)
+        }
+    }
+
+    fun installStarterSources(force: Boolean = true) {
+        scope.launch {
+            installStarterSourcesInternal(force = force)
+        }
+    }
+
+    private suspend fun installStarterSourcesInternal(force: Boolean) {
+        AddonRepository.initialize()
+        PluginRepository.initialize()
+
+        val activeAddonCount = AddonRepository.uiState.value.addons.count { it.manifest != null }
+        val hasSources = activeAddonCount > 0 || AddonRepository.uiState.value.addons.isNotEmpty()
+
+        if (!force && NuvioTrSetupStorage.isDefaultSourcesInstalled() && hasSources) {
+            return
+        }
+
+        InAppLogger.info("NuvioTR/FirstRun", "Installing Turkish starter sources (force=$force)")
+
+        coroutineScope {
+            // Catalogs
+            (listOf(CINEMETA_URL) + defaultCatalogs).forEach { url ->
+                launch {
+                    runCatching {
+                        if (force || AddonRepository.uiState.value.addons.none { it.manifestUrl == url }) {
+                            AddonRepository.addAddon(url)
+                        }
+                    }.onFailure { error ->
+                        InAppLogger.warn("NuvioTR/FirstRun", "Failed to add starter addon $url: ${error.message}")
                     }
                 }
             }
-            NuvioTrSetupStorage.markDefaultSourcesInstalled()
+
+            // Plugin Repositories
+            defaultPluginRepositories.forEach { url ->
+                launch {
+                    runCatching {
+                        if (PluginRepository.uiState.value.repositories.none { it.manifestUrl == url }) {
+                            val result = PluginRepository.addRepository(url)
+                            if (result is AddPluginRepositoryResult.Success) {
+                                addPluginContentSourcesToHome(result.repository.manifestUrl)
+                            }
+                        } else {
+                            addPluginContentSourcesToHome(url)
+                        }
+                    }.onFailure { error ->
+                        InAppLogger.warn("NuvioTR/FirstRun", "Failed to add starter repo $url: ${error.message}")
+                    }
+                }
+            }
         }
+
+        NuvioTrSetupStorage.markDefaultSourcesInstalled()
     }
 }

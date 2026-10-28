@@ -733,7 +733,7 @@ actual object PluginRepository {
     private fun ensureManifestSuffix(url: String): String {
         val path = url.substringBefore("?").trimEnd('/')
         val query = url.substringAfter("?", "")
-        val withSuffix = if (path.endsWith("/manifest.json")) path else "$path/manifest.json"
+        val withSuffix = if (path.endsWith("/manifest.json") || path.endsWith(".json")) path else "$path/manifest.json"
         return if (query.isEmpty()) withSuffix else "$withSuffix?$query"
     }
 
@@ -749,7 +749,7 @@ actual object PluginRepository {
         val withoutFragment = normalizedScheme.substringBefore("#")
         val query = withoutFragment.substringAfter("?", "")
         val path = withoutFragment.substringBefore("?").trimEnd('/')
-        val manifestPath = if (path.endsWith("/manifest.json")) path else "$path/manifest.json"
+        val manifestPath = if (path.endsWith("/manifest.json") || path.endsWith(".json")) path else "$path/manifest.json"
         return if (query.isEmpty()) manifestPath else "$manifestPath?$query"
     }
 

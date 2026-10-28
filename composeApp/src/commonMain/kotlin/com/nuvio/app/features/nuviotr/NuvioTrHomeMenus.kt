@@ -89,6 +89,7 @@ object NuvioTrHomeSelection {
 fun HomeUiState.filteredByNuvioTrCatalog(manifestUrl: String?): HomeUiState {
     if (manifestUrl == null) return this
     val kept = sections.filter { (it.target as? CatalogTarget.Addon)?.manifestUrl == manifestUrl }
+    if (kept.isEmpty()) return this
     return copy(
         sections = kept,
         heroItems = kept.flatMap { it.items }
