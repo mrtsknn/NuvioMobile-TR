@@ -28,7 +28,7 @@ jobs:
   build:
     name: Build unsigned ${{ inputs.configuration }} IPA
     # Hosted runner; the upstream "xcode-27" label is private to luqmanfadlli/NuvioMobile-Enhanced.
-    runs-on: macos-26
+    runs-on: macos-latest
     timeout-minutes: 180
     env:
       GH_TOKEN: ${{ github.token }}
@@ -134,9 +134,13 @@ jobs:
       - name: Publish pre-release
         if: inputs.release_tag != ''
         run: |
-          gh release create "${RELEASE_TAG}" "${{ steps.ipa.outputs.path }}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --target "${GITHUB_SHA}" \
-            --title "Nuvio TR ${RELEASE_TAG}" \
-            --prerelease \
-            --notes "Unsigned iOS build of Nuvio Enhanced (TR fork). Install with AltStore, SideStore or Sideloadly."
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${{ steps.ipa.outputs.path }}" --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${RELEASE_TAG}" "${{ steps.ipa.outputs.path }}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --target "${GITHUB_SHA}" \
+              --title "Nuvio TR ${RELEASE_TAG}" \
+              --prerelease \
+              --notes "Nuvio Mobile TR Sürümü (${RELEASE_TAG}). Android APK ve iOS IPA dosyaları ektedir."
+          fi
