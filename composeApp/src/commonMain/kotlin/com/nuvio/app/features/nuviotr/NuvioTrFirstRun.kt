@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 internal expect object NuvioTrSetupStorage {
     fun isDefaultSourcesInstalled(): Boolean
     fun markDefaultSourcesInstalled()
+    fun loadValue(key: String): String?
+    fun saveValue(key: String, value: String?)
 }
 
 /**
@@ -26,6 +28,7 @@ object NuvioTrFirstRun {
     )
     private val defaultPluginRepositories = listOf(
         "https://raw.githubusercontent.com/manitux-app/nuvio-test-plugins/refs/heads/main/manifest.json",
+        "https://raw.githubusercontent.com/mrtsknn/NuvioMobile-TR/tr/skystream-plugins/repo.json",
     )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

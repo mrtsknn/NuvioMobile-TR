@@ -1,5 +1,6 @@
 package com.nuvio.app.features.streams
 
+import com.nuvio.app.features.nuviotr.NuvioTrHomeSelection
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.logging.InAppLogger
 import com.nuvio.app.core.build.AppFeaturePolicy
@@ -35,6 +36,7 @@ object StreamsRepository {
     private val log = Logger.withTag("StreamsRepo")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _uiState = MutableStateFlow(StreamsUiState())
+    private var nuvioTrSourceGroupId: String? = null
     val uiState: StateFlow<StreamsUiState> = _uiState.asStateFlow()
 
     private var activeJob: Job? = null
@@ -244,10 +246,20 @@ object StreamsRepository {
                 isLoading = true,
             )
         } + serverSources.map { it.loadingGroup() }, installedAddonOrder, preferredGroupIds)
+            .let { ordered ->
+                // Nuvio TR "Kaynak": the chosen source (or the title's catalog plugin) comes first and opens selected.
+                nuvioTrSourceGroupId = NuvioTrHomeSelection.preferredStreamGroupId(
+                    groupIds = ordered.map { it.addonId },
+                    videoId = parentMetaId ?: videoId,
+                    type = type,
+                )
+                ordered.sortedByDescending { it.addonId == nuvioTrSourceGroupId }
+            }
         val isInitiallyLoading = initialGroups.any { it.isLoading }
         _uiState.value = StreamsUiState(
             requestToken = requestToken,
             groups = initialGroups,
+            selectedFilter = nuvioTrSourceGroupId,
             activeAddonIds = initialGroups.map { it.addonId }.toSet(),
             isAnyLoading = isInitiallyLoading,
             emptyStateReason = null,
@@ -665,6 +677,16 @@ object StreamsRepository {
 
             if (isDirectAutoPlayFlow && !autoSelectTriggered) {
                 settleAutoPlay(evaluateAutoPlay())
+            }
+            // The preferred source found nothing: show every source instead of an empty list.
+            nuvioTrSourceGroupId?.let { preferred ->
+                _uiState.update { state ->
+                    if (state.selectedFilter == preferred && state.groups.none { it.addonId == preferred && it.streams.isNotEmpty() }) {
+                        state.copy(selectedFilter = null)
+                    } else {
+                        state
+                    }
+                }
             }
             InAppLogger.info(
                 "Streams/StreamsRepository",

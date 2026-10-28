@@ -22,4 +22,8 @@
     <string name="nuviotr_collection_items">%1$d koleksiyon</string>
     <string name="nuviotr_preview_providers">Sağlayıcılar: %1$s</string>
     <string name="nuviotr_button_remove">Kaldır</string>
+    <string name="nuviotr_menu_catalog">Katalog</string>
+    <string name="nuviotr_menu_catalog_all">Tümü</string>
+    <string name="nuviotr_menu_source">Kaynak</string>
+    <string name="nuviotr_menu_source_auto">Otomatik</string>
 </resources>

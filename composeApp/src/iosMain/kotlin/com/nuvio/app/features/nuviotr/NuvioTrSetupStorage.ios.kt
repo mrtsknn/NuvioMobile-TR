@@ -11,4 +11,15 @@ internal actual object NuvioTrSetupStorage {
     actual fun markDefaultSourcesInstalled() {
         NSUserDefaults.standardUserDefaults.setBool(true, forKey = defaultSourcesKey)
     }
+
+    actual fun loadValue(key: String): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey("nuvio_tr_$key")
+
+    actual fun saveValue(key: String, value: String?) {
+        if (value == null) {
+            NSUserDefaults.standardUserDefaults.removeObjectForKey("nuvio_tr_$key")
+        } else {
+            NSUserDefaults.standardUserDefaults.setObject(value, forKey = "nuvio_tr_$key")
+        }
+    }
 }

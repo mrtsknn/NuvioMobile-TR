@@ -1,5 +1,8 @@
 package com.nuvio.app.features.home
 
+import com.nuvio.app.features.nuviotr.NuvioTrHomeMenus
+import com.nuvio.app.features.nuviotr.NuvioTrHomeSelection
+import com.nuvio.app.features.nuviotr.filteredByNuvioTrCatalog
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MutatePriority
@@ -142,7 +145,11 @@ fun HomeScreen(
     }
 
     val addonsUiState by AddonRepository.uiState.collectAsStateWithLifecycle()
-    val homeUiState by HomeRepository.uiState.collectAsStateWithLifecycle()
+    val rawHomeUiState by HomeRepository.uiState.collectAsStateWithLifecycle()
+    val nuvioTrCatalogManifestUrl by NuvioTrHomeSelection.catalogManifestUrl.collectAsStateWithLifecycle()
+    val homeUiState = remember(rawHomeUiState, nuvioTrCatalogManifestUrl) {
+        rawHomeUiState.filteredByNuvioTrCatalog(nuvioTrCatalogManifestUrl)
+    }
     val homeHeroState = rememberHomeHeroState(homeUiState.heroItems)
     val homeSettingsUiState by remember {
         HomeCatalogSettingsRepository.snapshot()
@@ -1063,6 +1070,9 @@ fun HomeScreen(
                             }
                         }
                     }
+                }
+                item(key = "nuviotr_home_menus", contentType = "nuviotr_menus") {
+                    NuvioTrHomeMenus()
                 }
 
                 when {

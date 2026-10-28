@@ -1,0 +1,73 @@
+[
+  {
+    "name": "DiziYou",
+    "packageName": "app.skystream.diziyou",
+    "version": "1.0.0",
+    "description": "DiziYou yabancı ve yerli dizi arşivi",
+    "iconUrl": "https://www.google.com/s2/favicons?domain=www.diziyou.one&sz=128",
+    "languages": ["tr"],
+    "tvTypes": ["TvSeries"],
+    "url": "diziyou.js"
+  },
+  {
+    "name": "FullHDFilmizlesene",
+    "packageName": "app.skystream.fullhdfilmizlesene",
+    "version": "1.0.0",
+    "description": "Fullhdfilmizlesene güncel yabancı filmler ve yerli yapımlar",
+    "iconUrl": "https://www.google.com/s2/favicons?domain=fullhdfilmizlesene.now&sz=128",
+    "languages": ["tr"],
+    "tvTypes": ["Movie"],
+    "url": "fullhdfilmizlesene.js"
+  },
+  {
+    "name": "SelcukFlix",
+    "packageName": "app.skystream.selcukflix",
+    "version": "1.0.0",
+    "description": "SelcukFlix dizi ve film arşivi",
+    "iconUrl": "https://selcukflix.com/assets/favicon/favicon-32x32.png",
+    "languages": ["tr"],
+    "tvTypes": ["Movie", "TvSeries"],
+    "url": "selcukflix.js"
+  },
+  {
+    "name": "SetFilm",
+    "packageName": "app.skystream.setfilm",
+    "version": "1.0.0",
+    "description": "SetFilmİzle HD film ve dizi izleme kaynağı",
+    "iconUrl": "https://www.google.com/s2/favicons?domain=www.setfilmizle.ltd&sz=128",
+    "languages": ["tr"],
+    "tvTypes": ["Movie", "TvSeries"],
+    "url": "setfilm.js"
+  },
+  {
+    "name": "Dizilla",
+    "packageName": "app.skystream.dizilla",
+    "version": "1.0.0",
+    "description": "Dizilla yabancı dizi ve bölümler",
+    "iconUrl": "https://www.google.com/s2/favicons?domain=dizilla.now&sz=128",
+    "languages": ["tr"],
+    "tvTypes": ["TvSeries"],
+    "url": "dizilla.js"
+  },
+  {
+    "name": "WebDramaTurkey",
+    "packageName": "app.skystream.webdramaturkey",
+    "version": "1.0.0",
+    "description": "Kore, Çin, Asya ve Web drama dizileri",
+    "iconUrl": "https://webdramaturkey2.com/public/static/favicon.webp",
+    "languages": ["tr"],
+    "tvTypes": ["TvSeries", "Movie"],
+    "url": "webdramaturkey.js"
+  },
+  {
+    "name": "YesilcamTV",
+    "packageName": "app.skystream.yesilcamtv",
+    "version": "1.0.0",
+    "description": "Türk Sineması ve Yeşilçam klasikleri",
+    "iconUrl": "https://yesilcamtv.com.tr/wp-content/themes/filmplus/fav.ico",
+    "languages": ["tr"],
+    "tvTypes": ["Movie"],
+    "url": "yesilcamtv.js"
+  }
+]
+

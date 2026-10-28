@@ -22,4 +22,8 @@
     <string name="nuviotr_collection_items">%1$d collections</string>
     <string name="nuviotr_preview_providers">Providers: %1$s</string>
     <string name="nuviotr_button_remove">Remove</string>
+    <string name="nuviotr_menu_catalog">Catalog</string>
+    <string name="nuviotr_menu_catalog_all">All</string>
+    <string name="nuviotr_menu_source">Source</string>
+    <string name="nuviotr_menu_source_auto">Auto</string>
 </resources>

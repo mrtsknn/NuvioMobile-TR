@@ -20,4 +20,10 @@ internal actual object NuvioTrSetupStorage {
     actual fun markDefaultSourcesInstalled() {
         preferences?.edit()?.putBoolean(defaultSourcesKey, true)?.apply()
     }
+
+    actual fun loadValue(key: String): String? = preferences?.getString(key, null)
+
+    actual fun saveValue(key: String, value: String?) {
+        preferences?.edit()?.apply { if (value == null) remove(key) else putString(key, value) }?.apply()
+    }
 }
