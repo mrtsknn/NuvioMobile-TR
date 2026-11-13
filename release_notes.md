@@ -1,41 +1,35 @@
 # Nuvio Mobile TR - v0.6.12-tr.1
 
-Türkçe içerik kaynakları ve eklentileriyle güçlendirilmiş Nuvio Mobile sürümü!
+Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 
-### 🌟 Öne Çıkan Özellikler ve Yenilikler:
-- **7 Adet Türkçe Eklenti (SkyStream formatı):**
-  - **SelcukFlix**
-  - **DiziYou**
-  - **SetFilm**
-  - **FullHDFilmizlesene**
-  - **Dizilla**
-  - **WebDramaTurkey**
-  - **YesilcamTV**
-- **Bağımsız Katalog ve Kaynak Yönetimi:** Ana sayfada tek dokunuşla dilediğiniz sitenin kataloğunu veya yayın kaynağını seçebilme.
-- **Sağlayıcı İçi Arama:** Arama sekmesinde tüm Türk eklentileri taranarak kategorize edilmiş arama sonuçları.
-- **Site Yorumları:** İçerik detay sayfalarında kaynak sitenin gerçek kullanıcı yorumlarını görebilme.
-- **Otomatik Cloudflare DoH DNS:** Türkiye ISP DNS engellerini aşmak için varsayılan DNS Cloudflare DoH olarak ayarlandı.
-- **Eklenti Ayarları ve Alan Adı Değiştirme:** Değişen site alan adlarını doğrudan uygulama içinden güncelleyebilme ve test edebilme.
+### 🌟 Öne Çıkan Özellikler
+- **Hazır Türkçe Eklentiler:** Uygulama ilk açılışta Türkçe film ve dizi eklentileriyle birlikte gelir.
+- **Bağımsız Katalog ve Kaynak Seçimi:** Ana sayfada tek dokunuşla katalog ve yayın kaynağı seçebilme.
+- **Eklenti İçi Arama:** Arama sonuçları eklentilere göre gruplanmış şekilde listelenir.
+- **Site Yorumları:** Destekleyen eklentilerde içerik sayfasında kullanıcı yorumları.
+- **Otomatik DNS Ayarı:** Erişim engellerine karşı güvenli DNS varsayılan olarak açık.
+- **Eklenti Ayarları:** Değişen alan adlarını uygulama içinden güncelleyip test edebilme.
 
-### 🔄 Upstream güncellemeleri (Nuvio Enhanced 0.6.5 → 0.6.12-beta):
-- **Oynatıcı:** Bölüm (chapter) desteği iki motorda ve iOS'ta, Live TV için HLS kalite seçici, Live TV sonsuz tamponlama/siyah ekran düzeltmesi
-- **Blu-ray:** ExoPlayer ile ISO/BDMV/M2TS oynatma
-- **Altyazı:** Cihaza özel altyazı tercihleri, gölge/kontur/bulanıklık ayarları, zorunlu altyazı ve AutoSync varsayılan açık
-- **Performans:** Seekbar küçük resimleri daha hızlı, iOS'ta 4K HDR/DV ve uzun oturumlarda bellek iyileştirmeleri
-- **Senkron:** Simkl OAuth v2, MDBList önbellek, oturum yenileme başarısız olsa da girişte kalma
-- **Diğer:** Anime keskinleştirici güçlendirildi, fragman sessize alma butonu sağ üstte, Discord RPC IMDb butonu düzeltildi
+### 🆕 Bu Sürümde Yenilikler
+- **Hesapla Giriş ve Senkronizasyon:** Kitaplık, izleme geçmişi ve "İzlemeye Devam" tüm cihazlarda eşitlenir.
+- **Oynatıcı:** Bölüm (chapter) desteği, canlı yayınlarda kalite seçici, canlı yayın donma ve siyah ekran düzeltmeleri.
+- **Blu-ray Desteği:** ISO / BDMV / M2TS dosyalarını oynatabilme.
+- **Altyazı:** Cihaza özel altyazı tercihleri; gölge, kontur ve bulanıklık ayarları; zorunlu altyazı ve otomatik senkron varsayılan olarak açık.
+- **Mini Oynatıcı:** Uygulamada gezinirken izlemeye devam edebilme.
+- **Performans:** Daha hızlı ileri sarma önizlemeleri, iOS'ta yüksek çözünürlüklü ve uzun oturumlarda bellek iyileştirmeleri.
+- **Güncel Öneri Listesi:** Önerilen eklenti ve kataloglar güncel listeden gelir; yeni eklentiler ve katalog eklendi.
 
-### 🛠️ TR Düzeltmeleri:
-- **Hesapla giriş ve senkronizasyon** artık çalışıyor
-- **NuvioTR önerileri** yeni listeden geliyor (NuvioTR/nuvio-tr-repos) — 10 yeni eklenti, 1 yeni katalog
-- **Kaynak bağlamı** uygulama yeniden açıldığında da korunuyor; yorum destekli eklentilerde site yorumları Trakt olmadan da gösteriliyor
-- Katalog başlıklarındaki **Türkçe karakter** sorunu (ç, ö, ü...) giderildi
-- **DiziBox ve benzeri sitelerin posterleri** artık yükleniyor
-- **SkyStream eklentileri 1.0.1:** temiz başlıklar, düzgün posterler, SelcukFlix / Dizilla / DiziYou / WebDramaTurkey aramaları düzeltildi, FullHDFilmizlesene Cloudflare engeli aşıldı
+### 🛠️ Düzeltmeler
+- Kataloglarda içerik açıldığında seçilen kaynak, uygulama yeniden açılsa da korunur.
+- Başlıklardaki Türkçe karakter sorunu (ç, ö, ü...) giderildi.
+- Bazı eklentilerde yüklenmeyen posterler artık görünüyor.
+- Eklenti aramalarında karışık başlıklar, boş kartlar ve çalışmayan aramalar düzeltildi.
 
-### 📦 İndirme Seçenekleri:
+### 📦 İndirme Seçenekleri
 - **`Nuvio-TR-0.6.12-universal.apk`**: Tüm Android cihazlar ile uyumlu evrensel APK.
-- **`Nuvio-TR-0.6.12-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için optimize edilmiş hafif paket.
+- **`Nuvio-TR-0.6.12-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için (önerilen).
 - **`Nuvio-TR-0.6.12-armeabi-v7a.apk`**: Eski 32-bit Android cihazlar için.
 - **`Nuvio-TR-0.6.12-x86_64.apk`**: Emülatörler ve x86_64 sistemler için.
-- **`nuvio-tr-0.6.12-tr.1-release.ipa`**: iOS cihazlar için IPA paketi (AltStore, SideStore veya Sideloadly ile yüklenebilir).
+- **`nuvio-tr-0.6.12-tr.1-release.ipa`**: iOS cihazlar için (AltStore, SideStore veya Sideloadly ile yüklenebilir).
+
+💡 Önceki sürümü kullananlar yeni APK'yı doğrudan üzerine kurabilir; veriler korunur.
