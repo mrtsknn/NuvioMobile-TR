@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Lock
@@ -114,6 +115,7 @@ internal fun FoldControls(
     onLockToggle: () -> Unit,
     onPartyClick: (() -> Unit)?,
     partyActive: Boolean,
+    onDiscTitlesClick: (() -> Unit)? = null,
     onNextEpisodeClick: (() -> Unit)?,
     onTogglePlayback: () -> Unit,
     onSeekBack: () -> Unit,
@@ -138,6 +140,8 @@ internal fun FoldControls(
     onWake: () -> Unit,
     horizontalSafePadding: Dp,
     modifier: Modifier = Modifier,
+    titleLogo: String? = null,
+    showTitleLogo: Boolean = false,
 ) {
     val currentOnWake by rememberUpdatedState(onWake)
     val contentAlpha by animateFloatAsState(
@@ -208,12 +212,21 @@ internal fun FoldControls(
             )
             NowPlayingTile(
                 title = title,
+                titleLogo = titleLogo,
+                showTitleLogo = showTitleLogo,
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
                 onNextEpisodeClick = onNextEpisodeClick?.let(interact),
                 modifier = Modifier.weight(1f),
             )
+            if (onDiscTitlesClick != null) {
+                IconTile(
+                    icon = Icons.Rounded.Album,
+                    description = stringResource(Res.string.player_disc_titles),
+                    onClick = interact(onDiscTitlesClick),
+                )
+            }
             IconTile(
                 icon = Icons.Rounded.Lock,
                 description = stringResource(Res.string.compose_player_lock_controls),
@@ -294,6 +307,7 @@ internal fun FoldControls(
                 if (badges.isNotEmpty()) {
                     PlayerBadges(badges = badges, modifier = Modifier.padding(bottom = 10.dp))
                 }
+                AnimeEnhancementBadge(status = playbackSnapshot.animeEnhancement, modifier = Modifier.padding(bottom = 10.dp))
                 PlayerChapterTitle(chapters = chapters, positionMs = displayedPositionMs)
                 TimelineRow(
                     chapters = chapters,
@@ -354,6 +368,8 @@ private fun IconTile(
 @Composable
 private fun NowPlayingTile(
     title: String,
+    titleLogo: String?,
+    showTitleLogo: Boolean,
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
@@ -367,12 +383,16 @@ private fun NowPlayingTile(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = typeScale.bodyMd.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.White,
+                PlayerTitleArtwork(
+                    title = title,
+                    logoUrl = titleLogo,
+                    showLogo = showTitleLogo,
+                    textStyle = typeScale.bodyMd.copy(fontWeight = FontWeight.SemiBold),
+                    textColor = Color.White,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLogoHeight = 26.dp,
+                    maxLogoWidth = 140.dp,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (seasonNumber != null && episodeNumber != null) {
                     val episodeCode = stringResource(Res.string.compose_player_episode_code_full, seasonNumber, episodeNumber)

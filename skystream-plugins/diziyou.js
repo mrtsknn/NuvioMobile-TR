@@ -1,4 +1,41 @@
 (function () {
+  // Posteri img, lazy-load data-* veya arka plan stilinden oku.
+  function cardPoster(el) {
+    const img = el.querySelector && el.querySelector('img');
+    if (img) {
+      const p = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original') || img.getAttribute('src');
+      if (p && !p.startsWith('data:')) return p;
+    }
+    const lazy = el.querySelector && el.querySelector('[data-src], [data-bg], [style*="background"]');
+    if (lazy) {
+      const d = lazy.getAttribute('data-src') || lazy.getAttribute('data-bg');
+      if (d) return d;
+      const m = /url\((['"]?)([^'")]+)\1\)/.exec(lazy.getAttribute('style') || '');
+      if (m) return m[2];
+    }
+    return null;
+  }
+
+  // Arama sonucu sayılmayacak kategori linkleri (Filmler, Diziler...).
+  function isCategoryLink(r) {
+    return /^(filmler|diziler|film|dizi|tümü|tum|anime|belgesel)$/i.test(String(r.title || '').trim());
+  }
+
+  // Kart başlığını rozet/puan metinleri karışmadan oku: aria-label > img alt > başlık etiketi > title.
+  function cardTitle(el, titleEl) {
+    const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const strip = (s) => clean(s).replace(/\s+(full\s*hd\s*)?(izle|izleyin)$/i, '').trim();
+    const aria = clean(el.getAttribute && el.getAttribute('aria-label'));
+    if (aria) return strip(aria.split(/,\s*\d{4}\b/)[0]);
+    const img = el.querySelector && el.querySelector('img');
+    const alt = img ? strip(img.getAttribute('alt') || img.getAttribute('title')) : '';
+    if (alt) return alt;
+    if (titleEl && titleEl !== el) { const t = strip(titleEl.textContent); if (t) return t; }
+    const attr = strip(el.getAttribute && el.getAttribute('title'));
+    if (attr) return attr;
+    return strip(el.textContent);
+  }
+
   const DEFAULT_DOMAIN = 'https://www.diziyou.one';
 
   async function getBaseUrl() {
@@ -13,7 +50,7 @@
 
   globalThis.getHome = async function () {
     const base = await getBaseUrl();
-    const res = await http_get(base, { 'User-Agent': 'Mozilla/5.0' });
+    const res = await http_get(base, { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
     const doc = await parseHtml(res.body || res);
     const categories = {};
     const items = [];
@@ -26,8 +63,8 @@
 
       if (linkEl && titleEl) {
         const href = linkEl.getAttribute('href');
-        const title = titleEl.textContent.trim();
-        const poster = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : null;
+        const title = cardTitle(el, titleEl);
+        const poster = cardPoster(el);
 
         items.push(new MultimediaItem({
           url: href.startsWith('http') ? href : base + href,
@@ -46,8 +83,8 @@
 
   globalThis.search = async function (query, page) {
     const base = await getBaseUrl();
-    const searchUrl = `${base}/search?q=${encodeURIComponent(query)}`;
-    const res = await http_get(searchUrl, { 'User-Agent': 'Mozilla/5.0' });
+    const searchUrl = `${base}/?s=${encodeURIComponent(query)}`;
+    const res = await http_get(searchUrl, { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
     const doc = await parseHtml(res.body || res);
     const results = [];
 
@@ -61,25 +98,45 @@
         const href = linkEl.getAttribute('href');
         results.push(new MultimediaItem({
           url: href.startsWith('http') ? href : base + href,
-          title: titleEl.textContent.trim(),
+          title: cardTitle(el, titleEl),
           type: 'series',
-          posterUrl: imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : null
+          posterUrl: cardPoster(el)
         }));
       }
     }
-    return results;
+
+    // Arama sayfası dizi değil bölüm kartları döndürür: bölüm adresinden diziye geç, tekrarları birleştir.
+    if (results.length === 0) {
+      const episodeLinks = doc.querySelectorAll('.listepisodes a[href]');
+      for (const a of episodeLinks) {
+        const href = a.getAttribute('href') || '';
+        const slug = href.replace(/\/+$/, '').split('/').pop().replace(/-\d+-sezon-\d+-bolum.*$/i, '');
+        if (!slug) continue;
+        const showUrl = `${base}/${slug}/`;
+        if (results.some((r) => r.url === showUrl)) continue;
+        const nameEl = a.querySelector('#dizi-ismi, .dizi-ismi');
+        const title = nameEl ? nameEl.textContent.replace(/\s+/g, ' ').trim() : cardTitle(a, null).replace(/\s+\d+\.\s*Sezon.*$/i, '');
+        results.push(new MultimediaItem({
+          url: showUrl,
+          title: title,
+          type: 'series',
+          posterUrl: cardPoster(a)
+        }));
+      }
+    }
+    return results.filter((r) => !isCategoryLink(r));
   };
 
   globalThis.load = async function (url) {
     const base = await getBaseUrl();
     const targetUrl = url.startsWith('http') ? url : base + url;
-    const res = await http_get(targetUrl, { 'User-Agent': 'Mozilla/5.0' });
+    const res = await http_get(targetUrl, { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' });
     const doc = await parseHtml(res.body || res);
 
     const titleEl = doc.querySelector('h1, div.baslik');
     const descEl = doc.querySelector('div.diziyou_desc, div.description');
     const imgEl = doc.querySelector('div.category_image img, .poster img');
-    const poster = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : null;
+    const poster = cardPoster(el);
 
     const episodes = [];
     const epElements = doc.querySelectorAll('div.bolumust, a.bolumlink, div.bolumismi, div#episodes a');
@@ -112,7 +169,7 @@
   };
 
   globalThis.loadStreams = async function (url) {
-    const res = await http_get(url, { 'User-Agent': 'Mozilla/5.0', 'Referer': url });
+    const res = await http_get(url, { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36', 'Referer': url });
     const doc = await parseHtml(res.body || res);
     const streams = [];
 

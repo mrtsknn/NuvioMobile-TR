@@ -36,8 +36,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,8 +78,12 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.ui.LocalDynamicArtworkBackgroundColor
+import com.nuvio.app.core.ui.platformPhysicalTopInset
 import com.nuvio.app.core.ui.rememberDynamicArtworkBackgroundEnabled
 import com.nuvio.app.core.ui.PrefetchArtworkDominantColors
+import com.nuvio.app.core.ui.focusedAlignment
+import com.nuvio.app.core.ui.rememberBackdropFocusState
+import com.nuvio.app.core.ui.revealAlpha
 import com.nuvio.app.core.ui.heroStretchHeight
 import com.nuvio.app.core.ui.LocalVerticalBarPadding
 import com.nuvio.app.core.ui.ScreenActivityEffect
@@ -100,6 +104,7 @@ import com.nuvio.app.features.trailer.TrailerPlaybackSource
 import com.nuvio.app.core.ui.centeredVerticalBarPadding
 import com.nuvio.app.core.ui.withVerticalBar
 import com.nuvio.app.features.home.stableKey
+import com.nuvio.app.navigation.LocalUseNativeNavigation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -255,6 +260,7 @@ internal fun HomeHeroSection(
 
     val isCardStyle = heroStyle == HomeHeroStyle.CARD
     val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val useNativeNavigation = LocalUseNativeNavigation.current
     val cardInsetModifier = if (isCardStyle) {
         Modifier.padding(
             top = statusBarTopPadding + HERO_CARD_TOP_PADDING,
@@ -452,6 +458,7 @@ internal fun HomeHeroSection(
                             val artworkUrl = heroArtworkUrl(item, effectiveArtworkSource)
                             val isCurrentLayer = layer.page == currentPage
                             key(effectiveArtworkSource, item.type, item.id, artworkUrl) {
+                                val backdropFocus = rememberBackdropFocusState(artworkUrl)
                                 AsyncImage(
                                     model = artworkUrl,
                                     contentDescription = item.name,
@@ -460,7 +467,7 @@ internal fun HomeHeroSection(
                                         .graphicsLayer {
                                             val offset = heroPageOffset(pagerState, layer.page)
                                             val visibility = (1f - abs(offset)).coerceIn(0f, 1f)
-                                            alpha = when {
+                                            alpha = backdropFocus.revealAlpha * when {
                                                 isCurrentLayer -> visibility
                                                 visibility > 0f -> 1f
                                                 else -> 0f
@@ -472,8 +479,12 @@ internal fun HomeHeroSection(
                                             scaleY = artworkBaseScale *
                                                 if (isCardStyle) 1f else heroBackgroundScrollScale(scrollOffsetPx)
                                         },
-                                    alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
+                                    alignment = backdropFocus.focusedAlignment(
+                                        if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
+                                    ),
                                     contentScale = ContentScale.Crop,
+                                    onSuccess = { state -> backdropFocus.onImageLoaded(state.result.image) },
+                                    onError = { backdropFocus.onImageFailed() },
                                 )
                             }
                         }
@@ -631,11 +642,16 @@ internal fun HomeHeroSection(
 
                     if (heroTrailerReady && heroTrailerPlaybackSource != null) {
                         val muteIconSize = 20.dp
+                        val muteTopPadding = when {
+                            isCardStyle -> 12.dp
+                            useNativeNavigation -> platformPhysicalTopInset() + 8.dp
+                            else -> statusBarTopPadding + 12.dp
+                        }
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(
-                                    top = statusBarTopPadding + 12.dp,
+                                    top = muteTopPadding,
                                     end = if (layout.isTablet) 32.dp else 18.dp,
                                 )
                                 .clip(CircleShape)
@@ -649,7 +665,7 @@ internal fun HomeHeroSection(
                                 .padding(8.dp),
                         ) {
                             Icon(
-                                imageVector = if (heroTrailerMuted) Icons.Rounded.VolumeOff else Icons.Rounded.VolumeUp,
+                                imageVector = if (heroTrailerMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(muteIconSize),

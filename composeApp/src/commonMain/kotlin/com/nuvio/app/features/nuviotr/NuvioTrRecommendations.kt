@@ -63,8 +63,8 @@ import nuvio.composeapp.generated.resources.nuviotr_preview_providers
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
-/** Community index of Turkish catalogs, collections and plugin repositories, maintained by manitux-app/nuvio-tr. */
-private const val NUVIOTR_REPOS_URL = "https://raw.githubusercontent.com/manitux-app/nuvio-tr/main/repos.json"
+/** Community index of Turkish catalogs, collections and plugin repositories, as listed on nuviotr.github.io. */
+private const val NUVIOTR_REPOS_URL = "https://raw.githubusercontent.com/NuvioTR/nuvio-tr-repos/refs/heads/main/repos.json"
 
 @Serializable
 private data class NuvioTrIndex(

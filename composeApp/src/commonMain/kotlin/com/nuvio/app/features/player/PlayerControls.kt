@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Groups
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.CastConnected
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
+import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Replay
@@ -142,11 +144,14 @@ internal fun PlayerControlsShell(
     onSeekForward: () -> Unit,
     skipBackwardSeconds: Int = PLAYER_SKIP_SECONDS_DEFAULT,
     skipForwardSeconds: Int = PLAYER_SKIP_SECONDS_DEFAULT,
+    showSkipButtons: Boolean = true,
     onResizeModeClick: () -> Unit,
     onSpeedClick: (() -> Unit)? = null,
     speedPickerVisible: Boolean = false,
     onSpeedSelected: (Float) -> Unit = {},
     onSpeedPickerDismiss: () -> Unit = {},
+    nightModeEnabled: Boolean = false,
+    onNightModeClick: (() -> Unit)? = null,
     onSubtitleClick: (() -> Unit)? = null,
     onAudioClick: (() -> Unit)? = null,
     onVideoSettingsClick: (() -> Unit)? = null,
@@ -163,6 +168,7 @@ internal fun PlayerControlsShell(
     chapters: List<PlayerChapter> = emptyList(),
     onChaptersClick: (() -> Unit)? = null,
     onLiveChannelsClick: (() -> Unit)? = null,
+    onDiscTitlesClick: (() -> Unit)? = null,
     qualityLabel: String? = null,
     onQualityClick: (() -> Unit)? = null,
     onOpenInExternalPlayer: (() -> Unit)? = null,
@@ -181,6 +187,8 @@ internal fun PlayerControlsShell(
     foldLayout: Boolean = false,
     gestureController: PlayerGestureController? = null,
     onWake: () -> Unit = {},
+    titleLogo: String? = null,
+    showTitleLogo: Boolean = false,
 ) {
     if (foldLayout) {
         FoldControls(
@@ -199,6 +207,7 @@ internal fun PlayerControlsShell(
             onLockToggle = onLockToggle,
             onPartyClick = onPartyClick,
             partyActive = partyActive,
+            onDiscTitlesClick = onDiscTitlesClick,
             onNextEpisodeClick = onNextEpisodeClick,
             onTogglePlayback = onTogglePlayback,
             onSeekBack = onSeekBack,
@@ -223,6 +232,8 @@ internal fun PlayerControlsShell(
             onWake = onWake,
             horizontalSafePadding = horizontalSafePadding,
             modifier = modifier,
+            titleLogo = titleLogo,
+            showTitleLogo = showTitleLogo,
         )
         return
     }
@@ -278,6 +289,8 @@ internal fun PlayerControlsShell(
             if (useLegacyLayout) {
                 PlayerHeader(
                     title = title,
+                    titleLogo = titleLogo,
+                    showTitleLogo = showTitleLogo,
                     streamTitle = streamTitle,
                     providerName = providerName,
                     seasonNumber = seasonNumber,
@@ -304,6 +317,7 @@ internal fun PlayerControlsShell(
                     onPartyClick = onPartyClick,
                     partyActive = partyActive,
                     onSwitchEngineClick = onSwitchEngineClick,
+                    onDiscTitlesClick = onDiscTitlesClick,
                     onBack = onBack,
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -324,6 +338,7 @@ internal fun PlayerControlsShell(
                         onOrientationToggleClick = onOrientationToggleClick,
                         isPortraitPlayback = isPortraitPlayback,
                         onPictureInPictureClick = onPictureInPictureClick,
+                        onDiscTitlesClick = onDiscTitlesClick,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .windowInsetsPadding(playerToolbarTopInsets(metrics))
@@ -351,6 +366,7 @@ internal fun PlayerControlsShell(
                         metrics = metrics,
                         skipBackwardSeconds = skipBackwardSeconds,
                         skipForwardSeconds = skipForwardSeconds,
+                        showSkipButtons = showSkipButtons,
                         onSeekBack = {
                             if (!useLegacyLayout) onInteraction()
                             onSeekBack()
@@ -385,6 +401,8 @@ internal fun PlayerControlsShell(
                     speedPickerVisible = speedPickerVisible,
                     onSpeedSelected = onSpeedSelected,
                     onSpeedPickerDismiss = onSpeedPickerDismiss,
+                    nightModeEnabled = nightModeEnabled,
+                    onNightModeClick = onNightModeClick,
                     onSubtitleClick = onSubtitleClick,
                     onAudioClick = onAudioClick,
                     onSourcesClick = onSourcesClick,
@@ -416,12 +434,15 @@ internal fun PlayerControlsShell(
                         PlayerTimelineDetails(
                             modifier = Modifier.padding(horizontal = playerTextCutoutPadding(metrics)),
                             title = title,
+                            titleLogo = titleLogo,
+                            showTitleLogo = showTitleLogo,
                             seasonNumber = seasonNumber,
                             episodeNumber = episodeNumber,
                             episodeTitle = episodeTitle,
                             releaseInfo = releaseInfo,
                             metrics = metrics,
                             badges = badges,
+                            animeEnhancement = playbackSnapshot.animeEnhancement,
                         )
                     }
                     Row(
@@ -480,6 +501,8 @@ internal fun PlayerControlsShell(
                         speedPickerVisible = speedPickerVisible,
                         onSpeedSelected = onSpeedSelected,
                         onSpeedPickerDismiss = onSpeedPickerDismiss,
+                        nightModeEnabled = nightModeEnabled,
+                        onNightModeClick = onNightModeClick,
                         onResizeModeClick = onResizeModeClick,
                         onVideoSettingsClick = onVideoSettingsClick,
                         onOpenInExternalPlayer = onOpenInExternalPlayer,
@@ -502,6 +525,8 @@ internal fun PlayerControlsShell(
 @Composable
 private fun PlayerHeader(
     title: String,
+    titleLogo: String?,
+    showTitleLogo: Boolean,
     streamTitle: String,
     providerName: String,
     seasonNumber: Int?,
@@ -528,6 +553,7 @@ private fun PlayerHeader(
     onPartyClick: (() -> Unit)?,
     partyActive: Boolean,
     onSwitchEngineClick: (() -> Unit)? = null,
+    onDiscTitlesClick: (() -> Unit)? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -550,16 +576,19 @@ private fun PlayerHeader(
                     modifier = Modifier.graphicsLayer { alpha = metadataAlpha },
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(
-                        text = title,
-                        style = typeScale.titleLg.copy(
+                    PlayerTitleArtwork(
+                        title = title,
+                        logoUrl = titleLogo,
+                        showLogo = showTitleLogo,
+                        textStyle = typeScale.titleLg.copy(
                             fontSize = metrics.titleSize,
                             lineHeight = metrics.titleSize * 1.16f,
                             fontWeight = FontWeight.Bold,
                         ),
-                        color = Color.White,
+                        textColor = Color.White,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        maxLogoHeight = metrics.titleLogoMaxHeight,
+                        maxLogoWidth = metrics.logoMaxWidth,
                     )
                     if (seasonNumber != null && episodeNumber != null && !episodeTitle.isNullOrBlank()) {
                         val displayEpisodeTitle = localizedEpisodeTitle(episodeTitle, episodeNumber) ?: episodeTitle
@@ -619,6 +648,15 @@ private fun PlayerHeader(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (onDiscTitlesClick != null) {
+                        PlayerHeaderIconButton(
+                            icon = Icons.Rounded.Album,
+                            contentDescription = stringResource(Res.string.player_disc_titles),
+                            buttonSize = metrics.headerIconSize + 16.dp,
+                            iconSize = metrics.headerIconSize,
+                            onClick = onDiscTitlesClick,
+                        )
+                    }
                     val topButtons = PlayerSettingsRepository.uiState.collectAsState().value.legacyTopButtons
                     topButtons.visibleButtons.forEach { button ->
                         key(button) {
@@ -808,13 +846,14 @@ private fun CenterControls(
     modifier: Modifier = Modifier,
     skipBackwardSeconds: Int = PLAYER_SKIP_SECONDS_DEFAULT,
     skipForwardSeconds: Int = PLAYER_SKIP_SECONDS_DEFAULT,
+    showSkipButtons: Boolean = true,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(metrics.centerGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SideControlButton(
+        if (showSkipButtons) SideControlButton(
             contentDescription = stringResource(Res.string.compose_player_seek_back_seconds, skipBackwardSeconds),
             metrics = metrics,
             onClick = onSeekBack,
@@ -825,7 +864,7 @@ private fun CenterControls(
             metrics = metrics,
             onClick = onTogglePlayback,
         )
-        SideControlButton(
+        if (showSkipButtons) SideControlButton(
             contentDescription = stringResource(Res.string.compose_player_seek_forward_seconds, skipForwardSeconds),
             metrics = metrics,
             onClick = onSeekForward,
@@ -947,6 +986,8 @@ private fun ProgressControls(
     speedPickerVisible: Boolean = false,
     onSpeedSelected: (Float) -> Unit = {},
     onSpeedPickerDismiss: () -> Unit = {},
+    nightModeEnabled: Boolean = false,
+    onNightModeClick: (() -> Unit)? = null,
     onSubtitleClick: (() -> Unit)? = null,
     onAudioClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
@@ -1086,6 +1127,17 @@ private fun ProgressControls(
                                                 label = stringResource(Res.string.compose_player_audio),
                                                 painter = audioPainter,
                                                 onClick = onAudioClick,
+                                            )
+                                        }
+                                    }
+                                    LegacyBottomButton.NIGHT_MODE -> {
+                                        if (onNightModeClick != null) {
+                                            PlayerActionPillButton(
+                                                label = stringResource(
+                                                    if (nightModeEnabled) Res.string.player_night_mode_on else Res.string.player_night_mode_off,
+                                                ),
+                                                icon = Icons.Rounded.NightsStay,
+                                                onClick = onNightModeClick,
                                             )
                                         }
                                     }

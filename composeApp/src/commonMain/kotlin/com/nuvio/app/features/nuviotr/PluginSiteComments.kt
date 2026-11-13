@@ -44,6 +44,17 @@ private sealed interface SiteCommentsState {
 }
 
 /**
+ * True when [id] was opened from a plugin catalog whose plugin declares `supportsComments`,
+ * so the details screen keeps its comments slot even without Trakt.
+ */
+fun hasPluginSiteComments(id: String, type: String): Boolean {
+    if (PluginAddonTransport.commentsHandler == null) return false
+    val origin = PluginContentRegistry.find(id, type)
+    if (origin == null) return id.startsWith(PluginAddonTransport.CONTENT_ID_PREFIX)
+    return PluginRepository.uiState.value.scrapers.any { it.id == origin.scraperId && it.supportsComments }
+}
+
+/**
  * Comments from the site a title was opened from (plugins declaring `supportsComments`).
  * Renders nothing for titles that did not come from such a plugin catalog.
  */

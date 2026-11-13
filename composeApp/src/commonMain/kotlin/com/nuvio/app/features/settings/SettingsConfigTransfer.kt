@@ -57,6 +57,13 @@ import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pSettingsStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsStorage
+import com.nuvio.app.features.player.SubtitleDevicePreferencesRepository
+import com.nuvio.app.features.player.SubtitleStyleState
+import com.nuvio.app.features.player.decodeSubtitleAppearance
+import com.nuvio.app.features.player.encode
+import com.nuvio.app.features.player.subtitleColorFromStorage
+import com.nuvio.app.features.player.toStorageHexString
+import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.search.SearchHistoryRepository
 import com.nuvio.app.features.shuffle.EpisodeShuffleRepository
@@ -705,6 +712,7 @@ internal object SettingsConfigTransfer {
         PlayerSettingsStorage.loadHoldToSpeedEnabled()?.let { put("hold_to_speed_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadHoldToSpeedValue()?.let { put("hold_to_speed_value", encodeSyncFloat(it)) }
         PlayerSettingsStorage.loadSkipBackwardSeconds()?.let { put("skip_backward_seconds", encodeSyncInt(it)) }
+        PlayerSettingsStorage.loadSkipIntroOffsetSeconds()?.let { put("skip_intro_offset_seconds", encodeSyncInt(it)) }
         PlayerSettingsStorage.loadToolbarLayout()?.let { put("player_toolbar_layout", encodeSyncString(it)) }
         PlayerSettingsStorage.loadLegacyBottomButtons()?.let { put("legacy_player_bottom_buttons", encodeSyncString(it)) }
         PlayerSettingsStorage.loadLegacyTopButtons()?.let { put("legacy_player_top_buttons", encodeSyncString(it)) }
@@ -723,29 +731,21 @@ internal object SettingsConfigTransfer {
         PlayerSettingsStorage.loadSecondaryPreferredAudioLanguage()?.let { put("secondary_preferred_audio_language", encodeSyncString(it)) }
         PlayerSettingsStorage.loadPreferredSubtitleLanguage()?.let { put("preferred_subtitle_language", encodeSyncString(it)) }
         PlayerSettingsStorage.loadSecondaryPreferredSubtitleLanguage()?.let { put("secondary_preferred_subtitle_language", encodeSyncString(it)) }
-        PlayerSettingsStorage.loadSubtitleTextColor()?.let { put("subtitle_text_color", encodeSyncString(it)) }
-        PlayerSettingsStorage.loadSubtitleBackgroundColor()?.let { put("subtitle_background_color", encodeSyncString(it)) }
-        PlayerSettingsStorage.loadSubtitleOutlineColor()?.let { put("subtitle_outline_color", encodeSyncString(it)) }
-        PlayerSettingsStorage.loadSubtitleOutlineEnabled()?.let { put("subtitle_outline_enabled", encodeSyncBoolean(it)) }
-        PlayerSettingsStorage.loadSubtitleOutlineWidth()?.let { put("subtitle_outline_width", encodeSyncInt(it)) }
-        PlayerSettingsStorage.loadSubtitleShadowEnabled()?.let { put("subtitle_shadow_enabled", encodeSyncBoolean(it)) }
-        PlayerSettingsStorage.loadSubtitleShadowStrength()?.let { put("subtitle_shadow_strength", encodeSyncInt(it)) }
-        PlayerSettingsStorage.loadSubtitleBold()?.let { put("subtitle_bold", encodeSyncBoolean(it)) }
-        PlayerSettingsStorage.loadSubtitleFontSizeSp()?.let { put("subtitle_font_size_sp", encodeSyncInt(it)) }
-        PlayerSettingsStorage.loadSubtitleBottomOffset()?.let { put("subtitle_bottom_offset", encodeSyncInt(it)) }
-        PlayerSettingsStorage.loadSubtitleStripSdh()?.let { put("subtitle_strip_sdh", encodeSyncBoolean(it)) }
-        PlayerSettingsStorage.loadSubtitleUseForcedSubtitles()?.let { put("subtitle_use_forced_subtitles", encodeSyncBoolean(it)) }
-        PlayerSettingsStorage.loadSubtitleShowOnlyPreferredLanguages()?.let { put("subtitle_show_only_preferred_languages", encodeSyncBoolean(it)) }
+        exportSubtitleStyle()
         PlayerSettingsStorage.loadStreamReuseLastLinkEnabled()?.let { put("stream_reuse_last_link_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours()?.let { put("stream_reuse_last_link_cache_hours", encodeSyncInt(it)) }
         PlayerSettingsStorage.loadAndroidPlaybackEngine()?.let { put("android_playback_engine", encodeSyncString(it)) }
         PlayerSettingsStorage.loadAndroidLibmpvVideoOutput()?.let { put("android_libmpv_video_output", encodeSyncString(it)) }
         PlayerSettingsStorage.loadAndroidLibmpvHardwareDecodingEnabled()?.let { put("android_libmpv_hardware_decoding_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadAndroidLibmpvYuv420pEnabled()?.let { put("android_libmpv_yuv420p_enabled", encodeSyncBoolean(it)) }
+        PlayerSettingsStorage.loadAndroidAnimeUpscaleEnabled()?.let { put("android_anime_upscale_enabled", encodeSyncBoolean(it)) }
+        PlayerSettingsStorage.loadAndroidAnimeLineSharpenEnabled()?.let { put("android_anime_line_sharpen_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadDecoderPriority()?.let { put("decoder_priority", encodeSyncInt(it)) }
         PlayerSettingsStorage.loadMapDV7ToHevc()?.let { put("map_d_v7_to_hevc", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadTunnelingEnabled()?.let { put("tunneling_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadAndroidAudioPassthroughEnabled()?.let { put("android_audio_passthrough_enabled", encodeSyncBoolean(it)) }
+        PlayerSettingsStorage.loadNightModeButtonEnabled()?.let { put("night_mode_button_enabled", encodeSyncBoolean(it)) }
+        PlayerSettingsStorage.loadNightModeEnabled()?.let { put("night_mode_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadExoNativeMemoryEnabled()?.let { put("exo_native_memory_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadCustomPlaybackBuffersEnabled()?.let { put("custom_playback_buffers_enabled", encodeSyncBoolean(it)) }
         PlayerSettingsStorage.loadVodDiskCacheEnabled()?.let { put("vod_disk_cache_enabled", encodeSyncBoolean(it)) }
@@ -801,6 +801,46 @@ internal object SettingsConfigTransfer {
         PlayerSettingsStorage.loadIosGamma()?.let { put("ios_gamma", encodeSyncInt(it)) }
     }
 
+    private fun kotlinx.serialization.json.JsonObjectBuilder.exportSubtitleStyle() {
+        val style = SubtitleDevicePreferencesRepository.load(ProfileRepository.activeProfileId) ?: return
+        put("subtitle_text_color", encodeSyncString(style.textColor.toStorageHexString()))
+        put("subtitle_background_color", encodeSyncString(style.backgroundColor.toStorageHexString()))
+        put("subtitle_outline_color", encodeSyncString(style.outlineColor.toStorageHexString()))
+        put("subtitle_outline_enabled", encodeSyncBoolean(style.outlineEnabled))
+        put("subtitle_outline_width", encodeSyncInt(style.outlineWidth))
+        put("subtitle_appearance", encodeSyncString(style.appearance.encode()))
+        put("subtitle_bold", encodeSyncBoolean(style.bold))
+        put("subtitle_font_size_sp", encodeSyncInt(style.fontSizeSp))
+        put("subtitle_bottom_offset", encodeSyncInt(style.bottomOffset))
+        put("subtitle_strip_sdh", encodeSyncBoolean(style.stripSdh))
+        put("subtitle_use_forced_subtitles", encodeSyncBoolean(style.useForcedSubtitles))
+        put("subtitle_show_only_preferred_languages", encodeSyncBoolean(style.showOnlyPreferredLanguages))
+    }
+
+    private fun importSubtitleStyle(payload: JsonObject) {
+        val profileId = ProfileRepository.activeProfileId
+        val current = SubtitleDevicePreferencesRepository.load(profileId) ?: SubtitleStyleState.DEFAULT
+        val imported = current.copy(
+            textColor = payload.decodeSyncString("subtitle_text_color")?.let(::subtitleColorFromStorage) ?: current.textColor,
+            backgroundColor = payload.decodeSyncString("subtitle_background_color")?.let(::subtitleColorFromStorage)
+                ?: current.backgroundColor,
+            outlineColor = payload.decodeSyncString("subtitle_outline_color")?.let(::subtitleColorFromStorage)
+                ?: current.outlineColor,
+            outlineEnabled = payload.decodeSyncBoolean("subtitle_outline_enabled") ?: current.outlineEnabled,
+            outlineWidth = payload.decodeSyncInt("subtitle_outline_width") ?: current.outlineWidth,
+            appearance = payload.decodeSyncString("subtitle_appearance")?.let(::decodeSubtitleAppearance)
+                ?: current.appearance,
+            bold = payload.decodeSyncBoolean("subtitle_bold") ?: current.bold,
+            fontSizeSp = payload.decodeSyncInt("subtitle_font_size_sp") ?: current.fontSizeSp,
+            bottomOffset = payload.decodeSyncInt("subtitle_bottom_offset") ?: current.bottomOffset,
+            stripSdh = payload.decodeSyncBoolean("subtitle_strip_sdh") ?: current.stripSdh,
+            useForcedSubtitles = payload.decodeSyncBoolean("subtitle_use_forced_subtitles") ?: current.useForcedSubtitles,
+            showOnlyPreferredLanguages = payload.decodeSyncBoolean("subtitle_show_only_preferred_languages")
+                ?: current.showOnlyPreferredLanguages,
+        )
+        if (imported != current) SubtitleDevicePreferencesRepository.save(profileId, imported)
+    }
+
     private fun importPlayerSettings(payload: JsonObject) {
         payload.decodeSyncBoolean("use_legacy_player_layout")?.let { PlayerSettingsStorage.saveUseLegacyPlayerLayout(it) }
         payload.decodeSyncBoolean("show_loading_overlay")?.let { PlayerSettingsStorage.saveShowLoadingOverlay(it) }
@@ -811,6 +851,7 @@ internal object SettingsConfigTransfer {
         payload.decodeSyncBoolean("hold_to_speed_enabled")?.let { PlayerSettingsStorage.saveHoldToSpeedEnabled(it) }
         payload.decodeSyncFloat("hold_to_speed_value")?.let { PlayerSettingsStorage.saveHoldToSpeedValue(it) }
         payload.decodeSyncInt("skip_backward_seconds")?.let { PlayerSettingsStorage.saveSkipBackwardSeconds(it) }
+        payload.decodeSyncInt("skip_intro_offset_seconds")?.let { PlayerSettingsStorage.saveSkipIntroOffsetSeconds(it) }
         payload.decodeSyncString("player_toolbar_layout")?.let { PlayerSettingsStorage.saveToolbarLayout(it) }
         payload.decodeSyncString("legacy_player_bottom_buttons")?.let { PlayerSettingsStorage.saveLegacyBottomButtons(it) }
         payload.decodeSyncString("legacy_player_top_buttons")?.let { PlayerSettingsStorage.saveLegacyTopButtons(it) }
@@ -829,29 +870,21 @@ internal object SettingsConfigTransfer {
         payload.decodeSyncString("secondary_preferred_audio_language")?.let { PlayerSettingsStorage.saveSecondaryPreferredAudioLanguage(it) }
         payload.decodeSyncString("preferred_subtitle_language")?.let { PlayerSettingsStorage.savePreferredSubtitleLanguage(it) }
         payload.decodeSyncString("secondary_preferred_subtitle_language")?.let { PlayerSettingsStorage.saveSecondaryPreferredSubtitleLanguage(it) }
-        payload.decodeSyncString("subtitle_text_color")?.let { PlayerSettingsStorage.saveSubtitleTextColor(it) }
-        payload.decodeSyncString("subtitle_background_color")?.let { PlayerSettingsStorage.saveSubtitleBackgroundColor(it) }
-        payload.decodeSyncString("subtitle_outline_color")?.let { PlayerSettingsStorage.saveSubtitleOutlineColor(it) }
-        payload.decodeSyncBoolean("subtitle_outline_enabled")?.let { PlayerSettingsStorage.saveSubtitleOutlineEnabled(it) }
-        payload.decodeSyncInt("subtitle_outline_width")?.let { PlayerSettingsStorage.saveSubtitleOutlineWidth(it) }
-        payload.decodeSyncBoolean("subtitle_shadow_enabled")?.let { PlayerSettingsStorage.saveSubtitleShadowEnabled(it) }
-        payload.decodeSyncInt("subtitle_shadow_strength")?.let { PlayerSettingsStorage.saveSubtitleShadowStrength(it) }
-        payload.decodeSyncBoolean("subtitle_bold")?.let { PlayerSettingsStorage.saveSubtitleBold(it) }
-        payload.decodeSyncInt("subtitle_font_size_sp")?.let { PlayerSettingsStorage.saveSubtitleFontSizeSp(it) }
-        payload.decodeSyncInt("subtitle_bottom_offset")?.let { PlayerSettingsStorage.saveSubtitleBottomOffset(it) }
-        payload.decodeSyncBoolean("subtitle_strip_sdh")?.let { PlayerSettingsStorage.saveSubtitleStripSdh(it) }
-        payload.decodeSyncBoolean("subtitle_use_forced_subtitles")?.let { PlayerSettingsStorage.saveSubtitleUseForcedSubtitles(it) }
-        payload.decodeSyncBoolean("subtitle_show_only_preferred_languages")?.let { PlayerSettingsStorage.saveSubtitleShowOnlyPreferredLanguages(it) }
+        importSubtitleStyle(payload)
         payload.decodeSyncBoolean("stream_reuse_last_link_enabled")?.let { PlayerSettingsStorage.saveStreamReuseLastLinkEnabled(it) }
         payload.decodeSyncInt("stream_reuse_last_link_cache_hours")?.let { PlayerSettingsStorage.saveStreamReuseLastLinkCacheHours(it) }
         payload.decodeSyncString("android_playback_engine")?.let { PlayerSettingsStorage.saveAndroidPlaybackEngine(it) }
         payload.decodeSyncString("android_libmpv_video_output")?.let { PlayerSettingsStorage.saveAndroidLibmpvVideoOutput(it) }
         payload.decodeSyncBoolean("android_libmpv_hardware_decoding_enabled")?.let { PlayerSettingsStorage.saveAndroidLibmpvHardwareDecodingEnabled(it) }
         payload.decodeSyncBoolean("android_libmpv_yuv420p_enabled")?.let { PlayerSettingsStorage.saveAndroidLibmpvYuv420pEnabled(it) }
+        payload.decodeSyncBoolean("android_anime_upscale_enabled")?.let { PlayerSettingsStorage.saveAndroidAnimeUpscaleEnabled(it) }
+        payload.decodeSyncBoolean("android_anime_line_sharpen_enabled")?.let { PlayerSettingsStorage.saveAndroidAnimeLineSharpenEnabled(it) }
         payload.decodeSyncInt("decoder_priority")?.let { PlayerSettingsStorage.saveDecoderPriority(it) }
         payload.decodeSyncBoolean("map_d_v7_to_hevc")?.let { PlayerSettingsStorage.saveMapDV7ToHevc(it) }
         payload.decodeSyncBoolean("tunneling_enabled")?.let { PlayerSettingsStorage.saveTunnelingEnabled(it) }
         payload.decodeSyncBoolean("android_audio_passthrough_enabled")?.let { PlayerSettingsStorage.saveAndroidAudioPassthroughEnabled(it) }
+        payload.decodeSyncBoolean("night_mode_button_enabled")?.let { PlayerSettingsStorage.saveNightModeButtonEnabled(it) }
+        payload.decodeSyncBoolean("night_mode_enabled")?.let { PlayerSettingsStorage.saveNightModeEnabled(it) }
         payload.decodeSyncBoolean("exo_native_memory_enabled")?.let { PlayerSettingsStorage.saveExoNativeMemoryEnabled(it) }
         payload.decodeSyncBoolean("custom_playback_buffers_enabled")?.let { PlayerSettingsStorage.saveCustomPlaybackBuffersEnabled(it) }
         payload.decodeSyncBoolean("vod_disk_cache_enabled")?.let { PlayerSettingsStorage.saveVodDiskCacheEnabled(it) }

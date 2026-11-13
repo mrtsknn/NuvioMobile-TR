@@ -1,17 +1,26 @@
 package com.nuvio.app.features.library
 
+import androidx.compose.material.icons.rounded.CalendarMonth
+import com.nuvio.app.core.ui.background.isGlassUiActive
+import com.nuvio.app.core.ui.background.appGlassBackdrop
+import com.nuvio.app.core.ui.background.appBackgroundCover
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -166,6 +175,7 @@ import kotlinx.serialization.json.Json
 import com.nuvio.app.core.poster.CustomPosterScreen
 import com.nuvio.app.core.poster.CustomPosterUrlRepository
 import com.nuvio.app.core.poster.withCustomPosterUrl
+import com.nuvio.app.core.ui.rememberScreenActiveInfiniteFloat
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -258,6 +268,7 @@ fun LibraryScreen(
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
     var cloudSearchQuery by rememberSaveable { mutableStateOf("") }
+    var cloudSearchVisible by rememberSaveable { mutableStateOf(false) }
     val selectedType = remember(selectedTypeName) {
         selectedTypeName?.let { runCatching { CloudLibraryItemType.valueOf(it) }.getOrNull() }
     }
@@ -444,7 +455,7 @@ fun LibraryScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxWidth().appBackgroundCover(Color.Transparent)) {
             androidx.compose.foundation.layout.Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -515,10 +526,30 @@ fun LibraryScreen(
                                 .size(40.dp)
                                 .semantics { contentDescription = openCalendarLabel },
                         ) {
-                            LibraryCalendarGlyph(
-                                modifier = Modifier.size(19.dp),
+                            Icon(
+                                imageVector = Icons.Rounded.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                cutoutColor = MaterialTheme.colorScheme.background,
+                            )
+                        }
+                    }
+                    if (sourceMode == LibraryViewMode.Cloud) {
+                        val cloudSearchLabel = stringResource(Res.string.cloud_library_search_label)
+                        IconButton(
+                            onClick = {
+                                if (cloudSearchVisible) cloudSearchQuery = ""
+                                cloudSearchVisible = !cloudSearchVisible
+                            },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .semantics { contentDescription = cloudSearchLabel },
+                        ) {
+                            Icon(
+                                imageVector = if (cloudSearchVisible) Icons.Rounded.Close else Icons.Rounded.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -557,6 +588,7 @@ fun LibraryScreen(
                     selectedType = selectedType,
                     selectedCloudItemKey = selectedCloudItemKey,
                     searchQuery = cloudSearchQuery,
+                    searchVisible = cloudSearchVisible,
                     onSearchQueryChange = {
                         cloudSearchQuery = it
                         selectedCloudItemKey = null
@@ -672,7 +704,7 @@ fun LibraryScreen(
                                 Box(
                                     modifier = Modifier
                                         .matchParentSize()
-                                        .background(MaterialTheme.colorScheme.background)
+                                        .appBackgroundCover(MaterialTheme.colorScheme.background)
                                         .nuvioConsumePointerEvents(),
                                 )
                                 LibrarySavedControls(
@@ -763,6 +795,7 @@ private fun LazyListScope.cloudLibraryContent(
     selectedType: CloudLibraryItemType?,
     selectedCloudItemKey: String?,
     searchQuery: String,
+    searchVisible: Boolean,
     onSearchQueryChange: (String) -> Unit,
     onProviderSelected: (String?) -> Unit,
     onTypeSelected: (CloudLibraryItemType?) -> Unit,
@@ -839,25 +872,39 @@ private fun LazyListScope.cloudLibraryContent(
                     )
                 }
             } else {
-                item {
-                    CloudLibraryToolbar(
-                        uiState = uiState,
-                        selectedProviderId = selectedProviderId,
-                        selectedType = effectiveSelectedType,
-                        availableTypes = availableTypes,
-                        onProviderSelected = onProviderSelected,
-                        onTypeSelected = onTypeSelected,
-                        onRefresh = onRefresh,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-
-                item(key = "cloud-library-search") {
-                    CloudLibrarySearchField(
-                        query = searchQuery,
-                        onQueryChange = onSearchQueryChange,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                stickyHeader(key = "cloud-library-search") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .appBackgroundCover(MaterialTheme.colorScheme.background)
+                            .nuvioConsumePointerEvents(),
+                    ) {
+                        CloudLibraryToolbar(
+                            uiState = uiState,
+                            selectedProviderId = selectedProviderId,
+                            selectedType = effectiveSelectedType,
+                            availableTypes = availableTypes,
+                            onProviderSelected = onProviderSelected,
+                            onTypeSelected = onTypeSelected,
+                            onRefresh = onRefresh,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                        AnimatedVisibility(
+                            visible = searchVisible,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            val focusRequester = remember { FocusRequester() }
+                            LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+                            CloudLibrarySearchField(
+                                query = searchQuery,
+                                onQueryChange = onSearchQueryChange,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .focusRequester(focusRequester),
+                            )
+                        }
+                    }
                 }
 
                 val visibleProviderStates = uiState.providers.filter { providerState ->
@@ -1497,8 +1544,7 @@ private fun rememberCloudLibrarySkeletonBrush(): Brush {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
     )
-    val transition = rememberInfiniteTransition()
-    val translateAnim by transition.animateFloat(
+    val translateAnim by rememberScreenActiveInfiniteFloat(
         initialValue = 0f,
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
@@ -1608,10 +1654,11 @@ private fun LibraryReleaseCalendarPanel(
                     .widthIn(max = 760.dp)
                     .fillMaxWidth()
                     .height(panelHeight)
+                    .appGlassBackdrop(RoundedCornerShape(28.dp))
                     .clickable(onClick = {}),
                 color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(28.dp),
-                shadowElevation = 18.dp,
+                shadowElevation = if (isGlassUiActive()) 0.dp else 18.dp,
             ) {
                 Column(
                     modifier = Modifier
@@ -2689,7 +2736,6 @@ private object LibraryReleaseCalendarCache {
                 if (latest.cacheKey == cacheKey) {
                     _state.value = latest.copy(
                         events = (latest.events + result.events).sortedLibraryCalendarEvents(),
-                        // Leave the month unloaded when a series failed, so it is requested again.
                         loadedMonthKeys = if (result.failedSeriesKeys.isEmpty()) {
                             latest.loadedMonthKeys + monthKey
                         } else {
@@ -2869,7 +2915,6 @@ private object LibraryReleaseCalendarCache {
                 .collect { signature ->
                     if (signature == null) return@collect
                     if (_state.value.addonSignature != signature) {
-                        // Addons became ready or changed: failures may now succeed.
                         resetRetry()
                         refreshIfStale()
                     }
@@ -3245,7 +3290,6 @@ private class LibraryDisintegrationHolder {
     }
 }
 
-/** An episode from the Library release calendar, exposed for other screens (Profile Insight). */
 internal data class LibraryUpcomingEpisode(
     val key: String,
     val item: LibraryItem,
@@ -3260,10 +3304,6 @@ internal suspend fun warmLibraryReleaseSchedule(items: List<LibraryItem>) {
     if (items.isNotEmpty()) LibraryReleaseCalendarCache.warm(items)
 }
 
-/**
- * Episodes of saved series airing from today through the next [days] days (today included),
- * read from the same release-calendar cache the Library calendar shows, so both always agree.
- */
 internal fun libraryUpcomingEpisodesFlow(days: Int = 7): Flow<List<LibraryUpcomingEpisode>> =
     LibraryReleaseCalendarCache.state.map { state -> state.events.upcomingEpisodes(days) }
 

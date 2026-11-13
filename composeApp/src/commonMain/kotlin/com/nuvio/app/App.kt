@@ -1,5 +1,6 @@
 package com.nuvio.app
 
+import com.nuvio.app.core.ui.background.AppBackgroundHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,6 +25,10 @@ import com.nuvio.app.navigation.TabsRoute
 
 fun disposeRoute(route: AppRoute) {
     disposeRouteResources(route)
+}
+
+fun setPlayerParkedInPictureInPicture(parked: Boolean) {
+    com.nuvio.app.core.ui.background.AppBackgroundRepository.setPlayerParked(parked)
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -71,7 +76,10 @@ fun App(
 }
 
 @Composable
-internal fun AppEnvironment(content: @Composable () -> Unit) {
+internal fun AppEnvironment(
+    drawAppBackground: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     if (!platformProvidesImageLoader) {
         setSingletonImageLoaderFactory { context ->
             ImageLoader.Builder(context)
@@ -103,7 +111,13 @@ internal fun AppEnvironment(content: @Composable () -> Unit) {
     val customThemeColors by ThemeSettingsRepository.customThemeColors.collectAsStateWithLifecycle()
 
     NuvioTheme(appTheme = selectedTheme, amoled = amoledEnabled, customThemeColors = customThemeColors) {
-        content()
+        if (drawAppBackground) {
+            AppBackgroundHost {
+                content()
+            }
+        } else {
+            content()
+        }
         PluginMessageDialogHost()
     }
 }

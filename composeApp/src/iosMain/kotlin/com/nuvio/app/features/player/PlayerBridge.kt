@@ -48,6 +48,8 @@ interface NuvioPlayerBridge {
         gamma: Int,
     )
     fun configureAudioOutput(audioOutput: String)
+    fun setNightMode(enabled: Boolean, filter: String, label: String)
+    fun isNightModeSupported(): Boolean
     fun setPlaybackSpeed(speed: Float)
     fun getVolume(): Float
     fun setVolume(volume: Float)
@@ -71,26 +73,33 @@ interface NuvioPlayerBridge {
     fun applyAudioLanguagePreferences(languages: List<String>)
     fun selectSubtitleTrack(trackId: Int)
     fun setSubtitleUrl(url: String)
+    /**
+     * Loads the local subtitle file at [path] in place of the external track loaded from
+     * [replacedUrl], keeping that track's title and language. Earlier AutoSync copies are dropped.
+     */
+    fun replaceExternalSubtitle(replacedUrl: String, path: String)
     fun clearExternalSubtitle()
     fun clearExternalSubtitleAndSelect(trackId: Int)
     fun setSubtitleDelayMs(delayMs: Int)
-    fun setSubtitleFontPath(path: String)
+    fun setSubtitleTextHandler(handler: SubtitleTextHandler?)
     fun applySubtitleStyle(
         textColor: String,
         backgroundColor: String,
         outlineColor: String,
         outlineSize: Float,
-        shadowOffset: Float,
         bold: Boolean,
         fontSize: Float,
         subPos: Int,
         stripSdh: Boolean,
+        styledOverlay: Boolean,
+        outlineBlur: Int,
     )
     fun getIsLoading(): Boolean
     fun getIsPlaying(): Boolean
     fun getIsEnded(): Boolean
     fun getDurationMs(): Long
     fun getPositionMs(): Long
+    fun networkSpeedBytesPerSecond(): Long
     fun getBufferedMs(): Long
     fun getPlaybackSpeed(): Float
     fun getVideoWidth(): Int
@@ -101,6 +110,10 @@ interface NuvioPlayerBridge {
     fun setKeyboardShortcutHandler(handler: ((String) -> Unit)?)
     fun getProperty(name: String): String
     fun destroy()
+}
+
+fun interface SubtitleTextHandler {
+    fun onTextChanged(text: String)
 }
 
 /**
@@ -117,6 +130,10 @@ object NuvioPlayerBridgeFactory {
     fun create(): NuvioPlayerBridge? = factoryRef?.createBridge()
 
     val isRegistered: Boolean get() = factoryRef != null
+
+    fun closeParkedPictureInPicture() {
+        factoryRef?.closeParkedPictureInPicture()
+    }
 }
 
 /**
@@ -125,4 +142,6 @@ object NuvioPlayerBridgeFactory {
  */
 interface NuvioPlayerBridgeCreator {
     fun createBridge(): NuvioPlayerBridge
+
+    fun closeParkedPictureInPicture()
 }

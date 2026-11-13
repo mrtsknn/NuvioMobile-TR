@@ -530,6 +530,18 @@ private fun String.percentDecode(): String {
 }
 
 /** Site titles often arrive HTML-escaped (`&amp;`, `&#039;`). */
+/** Named entities Turkish sites emit (Latin-1 letters and common punctuation). */
+private val NAMED_HTML_ENTITIES: Map<String, String> = mapOf(
+    "ccedil" to "ç", "Ccedil" to "Ç", "ouml" to "ö", "Ouml" to "Ö", "uuml" to "ü", "Uuml" to "Ü",
+    "auml" to "ä", "Auml" to "Ä", "euml" to "ë", "iuml" to "ï", "acirc" to "â", "Acirc" to "Â",
+    "icirc" to "î", "Icirc" to "Î", "ucirc" to "û", "ocirc" to "ô", "ecirc" to "ê",
+    "aacute" to "á", "eacute" to "é", "Eacute" to "É", "iacute" to "í", "oacute" to "ó", "uacute" to "ú",
+    "agrave" to "à", "egrave" to "è", "ntilde" to "ñ", "szlig" to "ß", "atilde" to "ã", "otilde" to "õ",
+    "rsquo" to "’", "lsquo" to "‘", "rdquo" to "”", "ldquo" to "“",
+    "ndash" to "–", "mdash" to "—", "hellip" to "…", "middot" to "·",
+    "laquo" to "«", "raquo" to "»", "copy" to "©", "reg" to "®", "deg" to "°",
+)
+
 internal fun String.decodeHtmlEntities(): String {
     if ('&' !in this) return this
     return Regex("&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);").replace(this) { match ->
@@ -545,7 +557,7 @@ internal fun String.decodeHtmlEntities(): String {
                 "quot" -> "\""
                 "apos" -> "'"
                 "nbsp" -> " "
-                else -> match.value
+                else -> NAMED_HTML_ENTITIES[entity] ?: match.value
             }
         }
     }

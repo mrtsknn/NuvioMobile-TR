@@ -1,6 +1,7 @@
 package com.nuvio.app.features.player
 
 import androidx.compose.runtime.Composable
+import com.nuvio.app.isIos
 import com.nuvio.app.features.details.MetaDetailsUiState
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -25,6 +26,17 @@ internal fun PlayerScreenModalHosts(
     selectedAudioIndex: Int,
     onAudioTrackSelected: (Int) -> Unit,
     onAudioModalDismissed: () -> Unit,
+    showAudioDelay: Boolean,
+    audioDelayMs: Int,
+    onAudioDelayChanged: (Int) -> Unit,
+    showAudioAmplification: Boolean,
+    audioAmplificationDb: Int,
+    keepAudioAmplification: Boolean,
+    onAudioAmplificationChanged: (Int) -> Unit,
+    onKeepAudioAmplificationChanged: (Boolean) -> Unit,
+    showCenterMix: Boolean,
+    centerMixLevelDb: Int,
+    onCenterMixLevelChanged: (Int) -> Unit,
     showSubtitleModal: Boolean,
     subtitleTracks: List<SubtitleTrack>,
     selectedSubtitleIndex: Int,
@@ -50,12 +62,12 @@ internal fun PlayerScreenModalHosts(
     playerSettings: PlayerSettingsUiState,
     onVideoSettingsChanged: () -> Unit,
     onVideoSettingsModalDismissed: () -> Unit,
+    animeEnhancementStatus: AnimeEnhancementStatus? = null,
     showSourcesPanel: Boolean,
     sourceStreamsState: StreamsUiState,
     contentTitle: String,
     activeEpisodeTitle: String?,
-    activeSourceUrl: String,
-    activeStreamTitle: String,
+    currentStream: PlayerCurrentStream,
     showQualityPanel: Boolean,
     playerQualityState: PlayerQualitySelectionState,
     selectedPlayerQualityId: String?,
@@ -138,6 +150,17 @@ internal fun PlayerScreenModalHosts(
         selectedIndex = selectedAudioIndex,
         onTrackSelected = onAudioTrackSelected,
         onDismiss = onAudioModalDismissed,
+        showAudioDelay = showAudioDelay,
+        audioDelayMs = audioDelayMs,
+        onAudioDelayChanged = onAudioDelayChanged,
+        showAudioAmplification = showAudioAmplification,
+        audioAmplificationDb = audioAmplificationDb,
+        keepAudioAmplification = keepAudioAmplification,
+        onAudioAmplificationChanged = onAudioAmplificationChanged,
+        onKeepAudioAmplificationChanged = onKeepAudioAmplificationChanged,
+        showCenterMix = showCenterMix,
+        centerMixLevelDb = centerMixLevelDb,
+        onCenterMixLevelChanged = onCenterMixLevelChanged,
     )
 
     SubtitleModal(
@@ -167,9 +190,16 @@ internal fun PlayerScreenModalHosts(
     )
 
     IosVideoSettingsModal(
-        visible = showVideoSettingsModal,
+        visible = showVideoSettingsModal && isIos,
         settings = playerSettings,
         onSettingsChanged = onVideoSettingsChanged,
+        onDismiss = onVideoSettingsModalDismissed,
+    )
+
+    AnimeEnhancementPanel(
+        visible = showVideoSettingsModal && !isIos,
+        settings = playerSettings,
+        status = animeEnhancementStatus,
         onDismiss = onVideoSettingsModalDismissed,
     )
 
@@ -180,8 +210,7 @@ internal fun PlayerScreenModalHosts(
         currentSeason = activeSeasonNumber,
         currentEpisode = activeEpisodeNumber,
         currentEpisodeTitle = activeEpisodeTitle,
-        currentStreamUrl = activeSourceUrl,
-        currentStreamName = activeStreamTitle,
+        currentStream = currentStream,
         onFilterSelected = onSourceFilterSelected,
         onStreamSelected = onSourceStreamSelected,
         onReload = onReloadSources,

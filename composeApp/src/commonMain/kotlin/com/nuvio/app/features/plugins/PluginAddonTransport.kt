@@ -1,7 +1,16 @@
 package com.nuvio.app.features.plugins
 
+import com.nuvio.app.features.nuviotr.NuvioTrSetupStorage
 import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.atomicfu.locks.synchronized
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -44,6 +53,7 @@ object PluginAddonTransport {
  * asked for streams and comments with the provider page URL instead of a title search.
  */
 object PluginContentRegistry {
+    @Serializable
     data class Origin(
         val scraperId: String,
         val contentId: String,
@@ -51,15 +61,57 @@ object PluginContentRegistry {
         val type: String,
     )
 
+    private const val STORAGE_KEY = "plugin_content_origins_v1"
+    private const val MAX_ENTRIES = 4000
+
     private val lock = SynchronizedObject()
-    private val originsByKey = mutableMapOf<String, Origin>()
+    // Insertion-ordered so the oldest entries are dropped first once the cap is reached.
+    private val originsByKey = LinkedHashMap<String, Origin>()
+    private var loaded = false
+    private val storageJson = Json { ignoreUnknownKeys = true }
 
     private fun key(id: String, type: String): String =
         "${normalizePluginType(type)}:${id.trim().lowercase()}"
 
+    /** Home rows come back from the on-disk snapshot after a restart, so origins must survive it too. */
+    private fun ensureLoaded() {
+        if (loaded) return
+        loaded = true
+        val raw = runCatching { NuvioTrSetupStorage.loadValue(STORAGE_KEY) }.getOrNull() ?: return
+        runCatching { storageJson.decodeFromString<Map<String, Origin>>(raw) }
+            .getOrNull()
+            ?.let { originsByKey.putAll(it) }
+    }
+
+    private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var saveJob: Job? = null
+
+    /** Catalog pages remember many items in a burst; write once after it settles. Call under [lock]. */
+    private fun persist() {
+        while (originsByKey.size > MAX_ENTRIES) {
+            originsByKey.remove(originsByKey.keys.first())
+        }
+        saveJob?.cancel()
+        saveJob = saveScope.launch {
+            delay(2_000)
+            val snapshot = synchronized(lock) { storageJson.encodeToString(originsByKey.toMap()) }
+            runCatching { NuvioTrSetupStorage.saveValue(STORAGE_KEY, snapshot) }
+        }
+    }
+
     fun remember(ids: List<String>, origin: Origin) {
         synchronized(lock) {
-            ids.filter { it.isNotBlank() }.forEach { originsByKey[key(it, origin.type)] = origin }
+            ensureLoaded()
+            var changed = false
+            ids.filter { it.isNotBlank() }.forEach { id ->
+                val k = key(id, origin.type)
+                if (originsByKey[k] != origin) {
+                    originsByKey.remove(k)
+                    originsByKey[k] = origin
+                    changed = true
+                }
+            }
+            if (changed) persist()
         }
     }
 
@@ -67,6 +119,7 @@ object PluginContentRegistry {
     fun find(id: String, type: String): Origin? {
         val base = id.substringBefore(':').let { if (it.equals("tmdb", ignoreCase = true)) id.substringAfter(':').substringBefore(':') else it }
         return synchronized(lock) {
+            ensureLoaded()
             originsByKey[key(id, type)]
                 ?: originsByKey[key(base, type)]
                 ?: originsByKey[key("tmdb:$base", type)]
