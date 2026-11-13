@@ -12,6 +12,7 @@ import com.nuvio.app.features.debrid.DebridStreamPresentation
 import com.nuvio.app.features.debrid.DirectDebridStreamPreparer
 import com.nuvio.app.features.debrid.LocalDebridAvailabilityService
 import com.nuvio.app.features.details.MetaDetailsRepository
+import com.nuvio.app.features.nuviotr.ProviderPriorityRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.plugins.PluginsUiState
 import com.nuvio.app.features.plugins.pluginContentId
@@ -247,14 +248,18 @@ object PlayerStreamsRepository {
         val playerSettings = PlayerSettingsRepository.uiState.value
         val debridSettings = DebridSettingsRepository.snapshot()
         val pluginScrapers = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
-            PluginRepository.getEnabledScrapersForType(type)
+            ProviderPriorityRepository.prioritize(PluginRepository.getEnabledScrapersForType(type), type) { it.id }
         } else {
             emptyList()
         }
+        val preferredScraperIds = ProviderPriorityRepository.idsFor(type).toSet()
         val pluginProviderGroups = pluginScrapers.toPluginProviderGroups(
             repositories = pluginUiState.repositories,
             groupByRepository = pluginUiState.groupStreamsByRepository,
-        )
+        ).let { groups ->
+            val (withPreferred, rest) = groups.partition { group -> group.scrapers.any { it.id in preferredScraperIds } }
+            withPreferred + rest
+        }
 
         if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty() && serverSources.isEmpty()) {
             InAppLogger.warn("Streams/PlayerStreamsRepository", "No stream addons or plugin scrapers installed for type=$type id=$videoId")

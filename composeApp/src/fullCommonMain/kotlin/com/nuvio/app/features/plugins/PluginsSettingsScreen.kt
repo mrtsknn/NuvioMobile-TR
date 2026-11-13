@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.nuviotr.NuvioTrKind
 import com.nuvio.app.features.nuviotr.PluginContentSourceControls
+import com.nuvio.app.features.nuviotr.ProviderPriorityControls
 import com.nuvio.app.features.nuviotr.NuvioTrRecommendedSection
 import com.nuvio.app.core.ui.NuvioIconActionButton
 import com.nuvio.app.core.ui.NuvioInfoBadge
@@ -433,6 +434,7 @@ fun PluginsSettingsPageContent(
                         }
                     }
                     PluginContentSourceControls(scraper = scraper)
+                    ProviderPriorityControls(scraper = scraper)
 
                     Spacer(modifier = Modifier.height(12.dp))
                     NuvioPrimaryButton(

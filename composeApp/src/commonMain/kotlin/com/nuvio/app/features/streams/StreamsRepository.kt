@@ -1,6 +1,7 @@
 package com.nuvio.app.features.streams
 
 import com.nuvio.app.features.nuviotr.NuvioTrHomeSelection
+import com.nuvio.app.features.nuviotr.ProviderPriorityRepository
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.logging.InAppLogger
 import com.nuvio.app.core.build.AppFeaturePolicy
@@ -176,17 +177,28 @@ object StreamsRepository {
 
         val isNativeServerRequest = ServerStreams.isNativeRequest(videoId)
         val serverSources = ServerStreams.sources(type, videoId, season, episode, forceRefresh)
-        val preferredGroupIds = serverSources.filter { it.preferred }.mapTo(mutableSetOf()) { it.addonId }
         val installedAddons = if (isNativeServerRequest) emptyList() else AddonRepository.uiState.value.addons.enabledAddons()
+        // Nuvio TR: providers the user prefers for this type are queued first, so their streams
+        // arrive before the long tail of other providers.
         val pluginScrapers = if (AppFeaturePolicy.pluginsEnabled && !isNativeServerRequest) {
-            PluginRepository.getEnabledScrapersForType(type)
+            ProviderPriorityRepository.prioritize(PluginRepository.getEnabledScrapersForType(type), type) { it.id }
         } else {
             emptyList()
         }
+        val preferredScraperIds = ProviderPriorityRepository.idsFor(type).toSet()
         val pluginProviderGroups = pluginScrapers.toPluginProviderGroups(
             repositories = pluginUiState.repositories,
             groupByRepository = pluginUiState.groupStreamsByRepository,
-        )
+        ).let { groups ->
+            // Grouped by repository, a group holding a preferred provider moves up as a whole.
+            val (withPreferred, rest) = groups.partition { group -> group.scrapers.any { it.id in preferredScraperIds } }
+            withPreferred + rest
+        }
+        val preferredGroupIds = serverSources.filter { it.preferred }.mapTo(linkedSetOf()) { it.addonId }.apply {
+            pluginProviderGroups
+                .filter { group -> group.scrapers.any { it.id in preferredScraperIds } }
+                .forEach { add(it.addonId) }
+        }
 
         if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty() && serverSources.isEmpty()) {
             InAppLogger.warn("Streams/StreamsRepository", "No stream addons or plugin scrapers installed for type=$type id=$videoId")

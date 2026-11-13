@@ -26,4 +26,7 @@
     <string name="nuviotr_menu_catalog_all">Tümü</string>
     <string name="nuviotr_menu_source">Kaynak</string>
     <string name="nuviotr_menu_source_auto">Otomatik</string>
+    <string name="nuviotr_priority_label">Öncelik</string>
+    <string name="nuviotr_priority_movie">★ Film</string>
+    <string name="nuviotr_priority_series">★ Dizi</string>
 </resources>

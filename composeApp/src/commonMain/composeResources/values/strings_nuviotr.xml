@@ -26,4 +26,7 @@
     <string name="nuviotr_menu_catalog_all">All</string>
     <string name="nuviotr_menu_source">Source</string>
     <string name="nuviotr_menu_source_auto">Auto</string>
+    <string name="nuviotr_priority_label">Priority</string>
+    <string name="nuviotr_priority_movie">★ Movies</string>
+    <string name="nuviotr_priority_series">★ Series</string>
 </resources>
