@@ -25,6 +25,14 @@ Türkçe içerik kaynakları ve eklentileriyle güçlendirilmiş Nuvio Mobile s�
 - **Senkron:** Simkl OAuth v2, MDBList önbellek, oturum yenileme başarısız olsa da girişte kalma
 - **Diğer:** Anime keskinleştirici güçlendirildi, fragman sessize alma butonu sağ üstte, Discord RPC IMDb butonu düzeltildi
 
+### 🛠️ TR Düzeltmeleri:
+- **Hesapla giriş ve senkronizasyon** artık çalışıyor
+- **NuvioTR önerileri** yeni listeden geliyor (NuvioTR/nuvio-tr-repos) — 10 yeni eklenti, 1 yeni katalog
+- **Kaynak bağlamı** uygulama yeniden açıldığında da korunuyor; yorum destekli eklentilerde site yorumları Trakt olmadan da gösteriliyor
+- Katalog başlıklarındaki **Türkçe karakter** sorunu (ç, ö, ü...) giderildi
+- **DiziBox ve benzeri sitelerin posterleri** artık yükleniyor
+- **SkyStream eklentileri 1.0.1:** temiz başlıklar, düzgün posterler, SelcukFlix / Dizilla / DiziYou / WebDramaTurkey aramaları düzeltildi, FullHDFilmizlesene Cloudflare engeli aşıldı
+
 ### 📦 İndirme Seçenekleri:
 - **`Nuvio-TR-0.6.12-universal.apk`**: Tüm Android cihazlar ile uyumlu evrensel APK.
 - **`Nuvio-TR-0.6.12-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için optimize edilmiş hafif paket.
