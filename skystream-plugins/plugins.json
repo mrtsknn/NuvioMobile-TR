@@ -99,19 +99,5 @@
       "Movie"
     ],
     "url": "yesilcamtv.js"
-  },
-  {
-    "name": "RecTVSinema",
-    "packageName": "app.skystream.rectvsinema",
-    "version": "1.0.0",
-    "description": "7.200+ HD Türkçe Dublaj, Altyazı ve Yerli Film Arşivi (RecTV)",
-    "iconUrl": "https://www.google.com/s2/favicons?domain=twitter.com&sz=128",
-    "languages": [
-      "tr"
-    ],
-    "tvTypes": [
-      "Movie"
-    ],
-    "url": "rectvsinema.js"
   }
 ]
