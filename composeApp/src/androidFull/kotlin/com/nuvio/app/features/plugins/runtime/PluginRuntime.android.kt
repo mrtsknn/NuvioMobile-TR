@@ -6,6 +6,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
 
+/** Providers run side by side; with large repositories a small pool made streams take minutes. */
+private const val MAX_CONCURRENT_PLUGINS = 12
+
 internal val pluginDispatcher: CoroutineDispatcher =
     Executors.newFixedThreadPool(MAX_CONCURRENT_PLUGINS) { runnable ->
         Thread({

@@ -20,6 +20,9 @@ private const val PLUGIN_JS_MAX_STACK_SIZE_BYTES = 6L * 1024L * 1024L
 
 private val pluginThreadCounter = AtomicInt(0)
 
+/** Lower than Android: each iOS provider runs on its own 8 MB-stack thread. */
+private const val MAX_CONCURRENT_PLUGINS = 8
+
 @OptIn(ExperimentalCoroutinesApi::class)
 internal val pluginDispatcher: CoroutineDispatcher =
     Dispatchers.IO.limitedParallelism(MAX_CONCURRENT_PLUGINS)

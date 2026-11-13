@@ -37,7 +37,8 @@ jobs:
       IOS_CONFIGURATION: ${{ inputs.configuration }}
       KOTLIN_DAEMON_JVMARGS: -Xmx1024M
       NUVIO_GRADLE_JVMARGS: -Xmx2048M -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=768M -XX:+UseG1GC
-      NUVIO_KOTLIN_NATIVE_JVMARGS: -Xmx9216M -XX:+UseG1GC
+      # Intel runners have 14 GB; linking the iOS framework ran out of heap at 9 GB.
+      NUVIO_KOTLIN_NATIVE_JVMARGS: -Xmx11264M -XX:+UseG1GC
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
       # Read by runtimeConfigValue() in composeApp/build.gradle.kts when local.properties lacks them.
       NUVIO_SUPABASE_URL: ${{ secrets.NUVIO_SUPABASE_URL }}

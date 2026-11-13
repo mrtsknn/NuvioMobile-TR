@@ -30,28 +30,35 @@ internal class FetchBridge : HostModule {
             val bodyKind = args.getOrNull(3)?.toString() ?: "none"
             val body = args.getOrNull(4)?.toString() ?: ""
             val followRedirects = args.getOrNull(5) as? Boolean ?: true
+            if (UnreachableHosts.isSkipped(url)) {
+                return@function failedFetchJson(url, "Host temporarily skipped after a connection failure")
+            }
             try {
                 performNativeFetch(url, method, headersJson, bodyKind, body, followRedirects)
             } catch (t: Throwable) {
+                UnreachableHosts.recordFailure(url, t)
                 log.e(t) { "Fetch bridge error for $method $url" }
                 InAppLogger.error(
                     "PluginRuntime/Fetch",
                     "$method ${InAppLogger.redactUrl(url)} failed: ${InAppLogger.throwableSummary(t)}",
                 )
-                JsonObject(
-                    mapOf(
-                        "ok" to JsonPrimitive(false),
-                        "status" to JsonPrimitive(0),
-                        "statusText" to JsonPrimitive(t.message ?: "Fetch failed"),
-                        "url" to JsonPrimitive(url),
-                        "body" to JsonPrimitive(""),
-                        "bodyBase64" to JsonPrimitive(""),
-                        "headers" to JsonObject(emptyMap()),
-                    ),
-                ).toString()
+                failedFetchJson(url, t.message ?: "Fetch failed")
             }
         }
     }
+
+    private fun failedFetchJson(url: String, statusText: String): String =
+        JsonObject(
+            mapOf(
+                "ok" to JsonPrimitive(false),
+                "status" to JsonPrimitive(0),
+                "statusText" to JsonPrimitive(statusText),
+                "url" to JsonPrimitive(url),
+                "body" to JsonPrimitive(""),
+                "bodyBase64" to JsonPrimitive(""),
+                "headers" to JsonObject(emptyMap()),
+            ),
+        ).toString()
 
     private fun performNativeFetch(
         url: String,

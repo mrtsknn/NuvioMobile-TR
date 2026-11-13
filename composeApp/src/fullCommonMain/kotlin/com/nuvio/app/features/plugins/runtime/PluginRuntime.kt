@@ -32,7 +32,12 @@ import nuvio.composeapp.generated.resources.generic_unknown
 import org.jetbrains.compose.resources.getString
 
 internal const val PLUGIN_TIMEOUT_MS = 60_000L
-internal const val MAX_CONCURRENT_PLUGINS = 4
+
+/**
+ * Budget for one provider while the streams screen is open. Working sites answer within a few
+ * seconds; a slower one only holds a worker that queued providers are waiting for.
+ */
+internal const val PLUGIN_STREAM_TIMEOUT_MS = 20_000L
 
 internal object PluginRuntime {
     private val json = Json { ignoreUnknownKeys = true }
@@ -61,7 +66,7 @@ internal object PluginRuntime {
         )
 
         runCatching {
-            withTimeout(PLUGIN_TIMEOUT_MS) {
+            withTimeout(PLUGIN_STREAM_TIMEOUT_MS) {
                 val rawResult = executePluginInternal(
                     code = code,
                     scraperId = scraperId,
