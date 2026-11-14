@@ -1,4 +1,4 @@
-# Nuvio Mobile TR - v0.6.12-tr.1
+# Nuvio Mobile TR - v0.6.12-tr.3
 
 Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 
@@ -11,6 +11,8 @@ Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 - **Eklenti Ayarları:** Değişen alan adlarını uygulama içinden güncelleyip test edebilme.
 
 ### 🆕 Bu Sürümde Yenilikler
+- **Daha Hızlı Kaynak Açılışı:** Kaynaklar aynı anda çok daha fazla eklentide aranır; yanıt vermeyen siteler beklenmeden atlanır, ilk kaynaklar saniyeler içinde gelir.
+- **Film / Dizi Önceliği:** Eklenti ayarlarından her kaynağı film veya dizi için öncelikli işaretleyebilirsiniz; öncelikli kaynaklar önce aranır ve listenin en üstünde gösterilir.
 - **Hesapla Giriş ve Senkronizasyon:** Kitaplık, izleme geçmişi ve "İzlemeye Devam" tüm cihazlarda eşitlenir.
 - **Oynatıcı:** Bölüm (chapter) desteği, canlı yayınlarda kalite seçici, canlı yayın donma ve siyah ekran düzeltmeleri.
 - **Blu-ray Desteği:** ISO / BDMV / M2TS dosyalarını oynatabilme.
@@ -30,6 +32,6 @@ Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 - **`Nuvio-TR-0.6.12-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için (önerilen).
 - **`Nuvio-TR-0.6.12-armeabi-v7a.apk`**: Eski 32-bit Android cihazlar için.
 - **`Nuvio-TR-0.6.12-x86_64.apk`**: Emülatörler ve x86_64 sistemler için.
-- **`nuvio-tr-0.6.12-tr.1-release.ipa`**: iOS cihazlar için (AltStore, SideStore veya Sideloadly ile yüklenebilir).
+- **`nuvio-tr-0.6.12-tr.3-release.ipa`**: iOS cihazlar için (AltStore, SideStore veya Sideloadly ile yüklenebilir).
 
 💡 Önceki sürümü kullananlar yeni APK'yı doğrudan üzerine kurabilir; veriler korunur.
