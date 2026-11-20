@@ -1,0 +1,110 @@
+{
+  "name": "MuratTv Türk Kaynakları",
+  "version": "1.0.0",
+  "author": "MuratTv",
+  "description": "Cloudstream (.cs3) Türk eklentilerinden çevrilen Nuvio kaynakları (MuratTv + NuvioTR).",
+  "scrapers": [
+    {
+      "id": "dizist",
+      "name": "Dizist",
+      "description": "Dizist: Türkçe altyazılı/dublaj yabancı diziler (pichive HLS).",
+      "version": "1.0.0",
+      "author": "MuratTv",
+      "supportedTypes": [
+        "tv"
+      ],
+      "filename": "providers/dizist.js",
+      "enabled": true,
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
+      "logo": "https://www.google.com/s2/favicons?domain=dizist.live&sz=128",
+      "contentLanguage": [
+        "tr"
+      ]
+    },
+    {
+      "id": "fullhdfilm",
+      "name": "FullHDFilm",
+      "description": "FullHDFilm (fullhdfilmizlebox): Türkçe dublaj/altyazılı filmler (videoseyred, hdload HLS).",
+      "version": "1.0.0",
+      "author": "MuratTv",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/fullhdfilm.js",
+      "enabled": true,
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
+      "logo": "https://www.google.com/s2/favicons?domain=fullhdfilmizlebox.vip&sz=128",
+      "contentLanguage": [
+        "tr"
+      ]
+    },
+    {
+      "id": "hdfilmcehennemi2",
+      "name": "HDFilmCehennemi2",
+      "description": "HDFilmCehennemi2: Türkçe dublaj/altyazılı film ve diziler (vidload, vidmoly HLS).",
+      "version": "1.0.0",
+      "author": "MuratTv",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/hdfilmcehennemi2.js",
+      "enabled": true,
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
+      "logo": "https://www.google.com/s2/favicons?domain=hdfilmcehennemi2.biz&sz=128",
+      "contentLanguage": [
+        "tr"
+      ]
+    },
+    {
+      "id": "roketdizi",
+      "name": "RoketDizi",
+      "description": "RoketDizi: yabancı/yerli dizi ve filmler (pichive HLS, AES + iş kanıtı imzası).",
+      "version": "1.0.0",
+      "author": "MuratTv",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/roketdizi.js",
+      "enabled": true,
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
+      "logo": "https://www.google.com/s2/favicons?domain=roketdizi.life&sz=128",
+      "contentLanguage": [
+        "tr"
+      ]
+    },
+    {
+      "id": "ultrafilmizle",
+      "name": "UltraFilmizle",
+      "description": "UltraFilmizle: yeni çıkan yerli/yabancı filmler (hotstream/bePlayer HLS, AES).",
+      "version": "1.0.0",
+      "author": "MuratTv",
+      "supportedTypes": [
+        "movie"
+      ],
+      "filename": "providers/ultrafilmizle.js",
+      "enabled": true,
+      "formats": [
+        "m3u8",
+        "mp4"
+      ],
+      "logo": "https://www.google.com/s2/favicons?domain=ultraiz.net&sz=128",
+      "contentLanguage": [
+        "tr"
+      ]
+    }
+  ]
+}

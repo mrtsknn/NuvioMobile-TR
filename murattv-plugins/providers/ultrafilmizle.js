@@ -1,0 +1,419 @@
+// @provider {"id":"ultrafilmizle", "name":"UltraFilmizle", "types":["movie"], "domain":"ultraiz.net", "version":"1.0.0", "description":"UltraFilmizle: yeni çıkan yerli/yabancı filmler (hotstream/bePlayer HLS, AES)."}
+/*
+ * MuratTv / NuvioTR Cloudstream dönüşümleri: ortak yardımcılar (her eklentinin başına eklenir).
+ * Nuvio biçimi: module.exports = { getStreams(id, tür, sezon, bölüm) } → [{ name, title, url, quality, headers }].
+ * Yalnızca fetch kullanılır (QuickJS: timer, Buffer, require yok); async/await yerine Promise zinciri.
+ * Kaynak akışları BigBull CS (MIT, github.com/F0Rextasy/bigbullapp-cs) Kotlin eklentilerinden çevrildi.
+ */
+var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+function req(url, opts) {
+  var o = opts || {};
+  var headers = { "User-Agent": UA, "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8" };
+  if (o.referer) headers.Referer = o.referer;
+  if (o.headers) for (var k in o.headers) headers[k] = o.headers[k];
+  return fetch(url, { method: o.method || "GET", headers: headers, body: o.body }).then(function (r) {
+    if (!r.ok && !o.allowError) throw new Error("HTTP " + r.status + " " + url);
+    return r.text();
+  });
+}
+
+function reqJson(url, opts) {
+  return req(url, opts).then(function (t) { return JSON.parse(t); });
+}
+
+function first(re, s) {
+  var m = re.exec(String(s || ""));
+  if (!m) return null;
+  return m[1] === undefined ? m[0] : m[1];
+}
+
+function all(re, s) {
+  var out = [], m, src = String(s || "");
+  re.lastIndex = 0;
+  while ((m = re.exec(src)) !== null) { out.push(m); if (m.index === re.lastIndex) re.lastIndex++; }
+  return out;
+}
+
+function decode(s) {
+  return String(s || "")
+    .replace(/&#x([0-9a-f]+);/gi, function (_, h) { return String.fromCharCode(parseInt(h, 16)); })
+    .replace(/&#(\d+);/g, function (_, d) { return String.fromCharCode(parseInt(d, 10)); })
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+/** Bir JS dizgesi katmanını çözer: " → ", \/ → /, \\ → \ */
+function jsUnescape(v) {
+  return String(v || "").replace(/\\u([0-9a-fA-F]{4})|\\(.)/g, function (_, hex, c) {
+    if (hex) return String.fromCharCode(parseInt(hex, 16));
+    return c === "n" ? "\n" : c === "t" ? "\t" : c;
+  });
+}
+
+function abs(base, href) {
+  if (!href) return null;
+  href = decode(String(href).trim());
+  if (/^https?:/i.test(href)) return href;
+  if (href.indexOf("//") === 0) return "https:" + href;
+  var origin = /^(https?:\/\/[^/]+)/.exec(base);
+  if (href.charAt(0) === "/") return origin ? origin[1] + href : href;
+  return base.replace(/[^/]*$/, "") + href;
+}
+
+var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+/** base64 → metin (UTF-8). atob olmayan motorlar için. */
+function b64decode(s) {
+  s = String(s || "").replace(/[^A-Za-z0-9+/]/g, "");
+  var bytes = [], buf = 0, bits = 0;
+  for (var i = 0; i < s.length; i++) {
+    buf = (buf << 6) | B64.indexOf(s.charAt(i));
+    bits += 6;
+    if (bits >= 8) { bits -= 8; bytes.push((buf >> bits) & 255); }
+  }
+  var out = "", j = 0;
+  while (j < bytes.length) {
+    var c = bytes[j++];
+    if (c < 128) out += String.fromCharCode(c);
+    else if (c < 224) out += String.fromCharCode(((c & 31) << 6) | (bytes[j++] & 63));
+    else if (c < 240) out += String.fromCharCode(((c & 15) << 12) | ((bytes[j++] & 63) << 6) | (bytes[j++] & 63));
+    else { j += 3; out += "?"; }
+  }
+  return out;
+}
+
+function norm(s) {
+  return decode(s).toLowerCase()
+    .replace(/[ıİ]/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c").replace(/[âàá]/g, "a").replace(/[éè]/g, "e")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(?:izle|film|filmi|dizi|dizisi|full|hd|1080p|720p|turkce|dublaj|altyazili|tum|bolumleri)\b/g, " ")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ").trim()
+    .replace(/^(?:the|a|an)\s+/, "");
+}
+
+/**
+ * Arama sonuçlarından doğru yapımı seçer: başlıklardan biri birebir tutmalı; yıl biliniyorsa ±1 tutmalı.
+ * items: [{ url, title, year? }]
+ */
+function pick(items, info) {
+  var wants = [];
+  for (var i = 0; i < info.titles.length; i++) { var w = norm(info.titles[i]); if (w && wants.indexOf(w) < 0) wants.push(w); }
+  var loose = null;
+  for (var j = 0; j < items.length; j++) {
+    var it = items[j], have = norm(it.title);
+    if (!have) continue;
+    var yearOk = !info.year || !it.year || Math.abs(parseInt(it.year, 10) - info.year) <= 1;
+    var exactYear = info.year && it.year && parseInt(it.year, 10) === info.year;
+    for (var k = 0; k < wants.length; k++) {
+      if (have === wants[k] && yearOk) return it;
+      if (!loose && yearOk && it.year && have.indexOf(wants[k] + " ") === 0) loose = it;
+      // "Matrix Resurrections" ↔ "Matrix 4 Resurrections": yıl birebir ve tüm kelimeler geçiyorsa
+      if (!loose && exactYear && wants[k].split(" ").every(function (wd) { return (" " + have + " ").indexOf(" " + wd + " ") >= 0; })) loose = it;
+    }
+  }
+  return loose;
+}
+
+var WD = "https://www.wikidata.org/w/api.php?format=json&origin=*";
+function wdEntity(stmt) {
+  var q = WD + "&action=query&list=search&srlimit=1&srsearch=" + encodeURIComponent("haswbstatement:" + stmt);
+  var opts = { headers: { Accept: "application/json" } };
+  // Wikidata ara ara boş/hatalı yanıt veriyor: bir kez daha denenir
+  return reqJson(q, opts).then(function (j) {
+    return (j && j.query && j.query.search && j.query.search.length) ? j : reqJson(q, opts);
+  }, function () { return reqJson(q, opts); })
+    .then(function (j) {
+      var hits = (j && j.query && j.query.search) || [];
+      if (!hits.length) return null;
+      return reqJson(WD + "&action=wbgetentities&props=labels|aliases|claims&languages=tr|en&ids=" + hits[0].title, { headers: { Accept: "application/json" } });
+    })
+    .then(function (j) {
+      var ents = (j && j.entities) || {};
+      for (var k in ents) return ents[k];
+      return null;
+    })
+    .catch(function () { return null; });
+}
+
+/**
+ * Yapımın adları (Türkçe, İngilizce, Cinemeta) ve yılı. id: TMDB sayısı ya da IMDb "tt…".
+ * Uygulama TMDB_API_KEY verirse TMDB'den, vermezse Wikidata'dan bulunur.
+ */
+function titlesFor(id, mediaType) {
+  var raw = String(id || "").replace(/^tmdb:/, "");
+  var tv = mediaType === "tv" || mediaType === "series";
+  var info = { titles: [], year: null, imdb: /^tt\d+$/.test(raw) ? raw : null };
+  function add(t) { t = String(t || "").replace(/\s*\([^)]*\)\s*$/, "").trim(); if (t && info.titles.indexOf(t) < 0) info.titles.push(t); }
+  // Deneme kolaylığı: "q:Ad|Yıl" doğrudan başlıkla arar
+  if (/^q:/.test(raw)) { var qp = raw.slice(2).split("|"); add(decodeURIComponent(qp[0])); info.year = qp[1] ? parseInt(qp[1], 10) : null; return Promise.resolve(info); }
+  var key = typeof TMDB_API_KEY !== "undefined" ? TMDB_API_KEY : "";
+  var tmdb = (/^\d+$/.test(raw) && key)
+    ? reqJson("https://api.themoviedb.org/3/" + (tv ? "tv" : "movie") + "/" + raw + "?language=tr-TR&append_to_response=external_ids&api_key=" + encodeURIComponent(key))
+        .then(function (j) {
+          add(j.title || j.name); add(j.original_title || j.original_name);
+          var d = j.release_date || j.first_air_date;
+          if (d) info.year = parseInt(d.slice(0, 4), 10);
+          if (j.external_ids && j.external_ids.imdb_id) info.imdb = j.external_ids.imdb_id;
+        }).catch(function () {})
+    : Promise.resolve();
+  return tmdb.then(function () {
+    var stmt = info.imdb ? "P345=" + info.imdb : (/^\d+$/.test(raw) ? (tv ? "P4983=" : "P4947=") + raw : null);
+    return stmt ? wdEntity(stmt) : null;
+  }).then(function (e) {
+    if (e) {
+      var l = e.labels || {}, a = e.aliases || {}, c = e.claims || {};
+      if (l.tr) add(l.tr.value);
+      if (l.en) add(l.en.value);
+      for (var i = 0; i < (a.tr || []).length && i < 2; i++) add(a.tr[i].value);
+      if (!info.imdb && c.P345 && c.P345[0]) info.imdb = c.P345[0].mainsnak.datavalue.value;
+      if (!info.year && c.P577 && c.P577[0]) {
+        var t = c.P577[0].mainsnak.datavalue && c.P577[0].mainsnak.datavalue.value.time;
+        if (t) info.year = parseInt(t.slice(1, 5), 10);
+      }
+    }
+    if (!info.imdb) return null;
+    return reqJson("https://v3-cinemeta.strem.io/meta/" + (tv ? "series" : "movie") + "/" + info.imdb + ".json").catch(function () { return null; });
+  }).then(function (j) {
+    var m = j && j.meta;
+    if (m) {
+      add(m.name);
+      if (!info.year) { var y = parseInt(String(m.releaseInfo || m.year || "").slice(0, 4), 10); if (y) info.year = y; }
+    }
+    return info;
+  });
+}
+
+/** Nuvio yalnız progressive dosyayı indirir; HLS'yi işaretle ki sahte dosya inmesin. */
+function hlsMark(url) {
+  var u = String(url || "");
+  if (/\.m3u8(\?|$)/i.test(u) || u.indexOf("#") !== -1) return u;
+  return u + "#.m3u8";
+}
+
+/** Ortak çıktı satırı. lang: "dublaj" | "altyazi" | "" */
+function row(provider, label, url, opts) {
+  var o = opts || {};
+  var tags = [];
+  if (/dublaj|^tr$/i.test(o.lang || label || "")) tags.push("TR Dublaj");
+  else if (/altyaz|^en$/i.test(o.lang || label || "")) tags.push("Altyazılı");
+  var headers = { "User-Agent": UA };
+  if (o.referer) headers.Referer = o.referer;
+  if (o.origin) headers.Origin = o.origin;
+  if (o.headers) for (var k in o.headers) headers[k] = o.headers[k];
+  var q = o.quality || "auto";
+  return {
+    name: provider,
+    title: provider + (label ? " - " + label : ""),
+    url: o.hls ? hlsMark(url) : url,
+    quality: tags.length ? q + " • " + tags.join(" • ") : q,
+    headers: headers,
+    subtitles: o.subtitles || []
+  };
+}
+
+/** Promise listesini sırayla çalıştırır, hatalıları atlar. */
+function seq(list, fn) {
+  var out = [];
+  var p = Promise.resolve();
+  list.forEach(function (x, i) {
+    p = p.then(function () { return fn(x, i); }).then(function (r) { if (r) out = out.concat(r); }, function () {});
+  });
+  return p.then(function () { return out; });
+}
+
+/** Birden çok başlıkla aramayı dener; ilk eşleşen yapımın adresini döner. */
+function findByTitles(info, searchFn) {
+  var tried = {};
+  return info.titles.reduce(function (p, t) {
+    return p.then(function (hit) {
+      var q = String(t).replace(/^(?:the|a|an)\s+/i, "");
+      if (hit || tried[norm(q)]) return hit;
+      tried[norm(q)] = 1;
+      return searchFn(q).then(function (items) { return pick(items || [], info); }, function () { return null; });
+    });
+  }, Promise.resolve(null));
+}
+
+/* ---------------------------------------------------------------- Oynatıcı çözücüleri
+ * Her biri { file, subs, referer, headers? } ya da null döner. info: titlesFor çıktısı (ad denetimi için).
+ */
+
+/** JW Player setup(JSON.parse('…')) gömülü yapılandırma (hdload.top, vidload.top…). */
+function exJwSetup(embed, referer) {
+  return req(embed, { referer: referer }).then(function (e) {
+    var cfg = first(/setup\(JSON\.parse\('([^']*)'\)/, e);
+    if (!cfg) return null;
+    var c = JSON.parse(jsUnescape(cfg));
+    var file = c.file || (c.sources && c.sources[0] && c.sources[0].file);
+    if (!file) return null;
+    var subs = (c.tracks || []).filter(function (t) { return t.file && (!t.kind || t.kind === "captions"); }).map(function (t) {
+      return { url: abs(embed, t.file), lang: "tr", label: t.label || "Türkçe" };
+    });
+    return { file: abs(embed, file), subs: subs, referer: embed };
+  });
+}
+
+/** videoseyred: /embed/<id> → /playlist/<id>.json. Seri sayfaları diğer filmleri de verir: ad tutmalı. */
+function exVideoseyred(embed, referer, info) {
+  var id = first(/\/embed\/(\d+)/, embed);
+  var origin = first(/^(https?:\/\/[^/]+)/, embed);
+  if (!id) return Promise.resolve(null);
+  return reqJson(origin + "/playlist/" + id + ".json", { referer: embed }).then(function (list) {
+    var it = list && list[0];
+    if (!it || !it.sources || !it.sources.length) return null;
+    if (info && info.titles.length && it.title && !pick([{ title: it.title }], { titles: info.titles })) return null;
+    var subs = (it.tracks || []).filter(function (t) { return t.kind === "captions" && t.file; }).map(function (t) {
+      return { url: t.file, lang: /tur|t[uü]rk/i.test((t.language || "") + (t.label || "")) ? "tr" : (t.language || "tr"), label: t.label || "Türkçe" };
+    });
+    return { file: it.sources[0].file, subs: subs, referer: embed };
+  });
+}
+
+/** vidmoly: sayfadaki sources: [{ file: '…m3u8' }]. */
+function exVidmoly(embed, referer) {
+  var url = embed.replace(/^\/\//, "https://");
+  return req(url, { referer: referer, headers: { "Sec-Fetch-Dest": "iframe" } }).then(function (e) {
+    var file = first(/sources\s*:\s*\[\s*\{\s*file\s*:\s*["']([^"']+)["']/, e) || first(/file\s*:\s*["'](https?:[^"']+\.m3u8[^"']*)["']/, e);
+    if (!file) return null;
+    var origin = first(/^(https?:\/\/[^/]+)/, url);
+    return { file: file, subs: [], referer: origin + "/" };
+  });
+}
+
+/** Bilinmeyen oynatıcı: sayfada geçen ilk m3u8/mp4. */
+function exGeneric(embed, referer) {
+  return req(embed, { referer: referer }).then(function (e) {
+    var t = String(e).replace(/\\//g, "/");
+    var file = first(/["'](https?:\/\/[^"'\s<>]+?\.(?:m3u8|mp4)(?:\?[^"'\s<>]*)?)["']/, t);
+    return file ? { file: file, subs: [], referer: embed } : null;
+  });
+}
+
+/** Oynatıcı adresine göre çözücü seçer. */
+function extract(embed, referer, info) {
+  var run = /videoseyred\./.test(embed) ? exVideoseyred(embed, referer, info)
+    : /vidmoly\./.test(embed) ? exVidmoly(embed, referer)
+    : /(?:hdload|vidload)\.top/.test(embed) ? exJwSetup(embed, referer)
+    : exGeneric(embed, referer);
+  return run.catch(function () { return null; });
+}
+
+/* ---------------------------------------------------------------- Laravel film/dizi altyapısı
+ * FullHDFilm, HDFilmCehennemi2: /api/search?q= (meilisearch) ve sayfada
+ * x-data="videoPlayerData(JSON.parse('…'))" → { dil: [{ template(base64 iframe), link, slug, quality, note, service_name }] }.
+ */
+function laravelSearch(base, wantSeries) {
+  return function (q) {
+    return reqJson(base + "/api/search?q=" + encodeURIComponent(q), { headers: { Accept: "application/json" } }).then(function (j) {
+      return (j.data || []).filter(function (x) {
+        return /Series/i.test(x.contentableType) === !!wantSeries;
+      }).map(function (x) {
+        return { url: base + "/" + String(x.slug || "").replace(/^\/+|\/+$/g, "") + "/", title: decode(x.title), year: x.releaseYear };
+      });
+    });
+  };
+}
+
+function laravelPlayers(provider, base, pageUrl, info) {
+  return req(pageUrl).then(function (html) {
+    var payload = first(/x-data="videoPlayerData\(JSON\.parse\('([^']*)'\)/, html);
+    if (!payload) return [];
+    var videos = JSON.parse(jsUnescape(decode(payload)));
+    var jobs = [];
+    for (var lang in videos) (videos[lang] || []).forEach(function (it) { jobs.push({ lang: lang, it: it }); });
+    return seq(jobs.slice(0, 10), function (job) {
+      var markup = b64decode(job.it.template || "").replace(/\{slug\}/g, job.it.slug || "").replace(/\{url\}/g, job.it.link || "");
+      var embed = abs(base, first(/(?:data-)?src="([^"]+)"/, markup));
+      if (!embed) return [];
+      return extract(embed, pageUrl, info).then(function (s) {
+        if (!s) return [];
+        var dual = job.lang === "dual" || /dual/i.test(job.it.note || "");
+        var langTxt = dual ? "Dublaj & Altyazı" : job.lang === "tr" ? "Dublaj" : job.lang === "en" ? "Altyazı" : String(job.lang).toUpperCase();
+        var label = [langTxt, job.it.service_name].filter(Boolean).join(" · ");
+        return [row(provider, label, s.file, {
+          referer: s.referer, hls: /\.m3u8|\/hls\/|\/list\//i.test(s.file), lang: job.lang === "en" ? "altyazi" : "dublaj",
+          quality: job.it.quality || "auto", subtitles: s.subs,
+        })];
+      });
+    });
+  });
+}
+
+/** Addan site adresi parçası: "Kuruluş: Osman" → "kurulus-osman". */
+function slugify(s) {
+  return String(s || "").toLowerCase()
+    .replace(/[ıİ]/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c")
+    .replace(/&/g, " and ").replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+
+var BASE = "https://ultraiz.net";
+// MuratTv CryptoJS'i genel değişken olarak verir; Nuvio/NuvioTR require('crypto-js') ile.
+var CJ = typeof CryptoJS !== "undefined" ? CryptoJS : (typeof require === "function" ? require("crypto-js") : null);
+
+function search(q) {
+  return reqJson(BASE + "/wp-json/wp/v2/search?per_page=20&search=" + encodeURIComponent(q)).then(function (arr) {
+    return (arr || []).map(function (o) {
+      var t = decode(o.title || "").replace(/\s+izle$/i, "");
+      return { url: o.url, title: t.replace(/\s+(19|20)\d{2}$/, ""), year: first(/\b((?:19|20)\d{2})\b/, t) };
+    });
+  });
+}
+
+/** bePlayer: AES-256-CBC; anahtar = MD5(şifre+tuz) + MD5(önceki+şifre+tuz) (OpenSSL EVP), iv ayrıca verilir. */
+function bePlayerDecrypt(hash, params) {
+  var pass = CJ.enc.Utf8.parse(hash), salt = CJ.enc.Hex.parse(params.s);
+  var a = CJ.MD5(pass.clone().concat(salt));
+  var b = CJ.MD5(a.clone().concat(pass).concat(salt));
+  var key = CJ.lib.WordArray.create(a.words.concat(b.words), 32);
+  var plain = CJ.AES.decrypt({ ciphertext: CJ.enc.Base64.parse(params.ct) }, key, { iv: CJ.enc.Hex.parse(params.iv), mode: CJ.mode.CBC, padding: CJ.pad.Pkcs7 });
+  return JSON.parse(plain.toString(CJ.enc.Utf8));
+}
+
+function getStreams(id, mediaType) {
+  if (mediaType === "tv" || !CJ) return Promise.resolve([]);
+  var pageUrl, embed;
+  return titlesFor(id, mediaType).then(function (info) {
+    return findByTitles(info, search);
+  }).then(function (hit) {
+    if (!hit) return null;
+    pageUrl = hit.url;
+    return req(pageUrl);
+  }).then(function (html) {
+    if (!html) return null;
+    var code = first(/ilkpartkod\s*=\s*'([^']+)'/, html);
+    embed = code ? first(/src="([^"]+)"/, b64decode(code)) : null;
+    if (!embed) {
+      var frames = all(/<iframe[^>]+src="([^"]+)"/gi, html).map(function (m) { return m[1]; })
+        .filter(function (u) { return !/youtube|facebook/.test(u); });
+      embed = frames[0];
+    }
+    if (!embed) return null;
+    embed = abs(BASE, embed);
+    return req(embed, { referer: pageUrl });
+  }).then(function (e) {
+    if (!e) return [];
+    var player = null;
+    var bp = /bePlayer\('([^']+)'\s*,\s*'(\{[\s\S]*?\})'/.exec(e);
+    if (bp) player = bePlayerDecrypt(bp[1], JSON.parse(bp[2]));
+    else {
+      var raw = first(/id="be-player-config"[^>]*data-config="([^"]+)"/, e);
+      if (raw) {
+        var cfg = JSON.parse(decode(raw));
+        if (cfg.videoId && cfg.settings) player = bePlayerDecrypt(cfg.videoId, JSON.parse(cfg.settings));
+      }
+    }
+    var stream = player && String(player.video_location || "").trim();
+    if (!stream || !/^https?:/.test(stream)) return [];
+    var base = embed.split("/embed/")[0];
+    var subs = (player.strSubtitles || []).filter(function (s) { return s.file && s.file.charAt(0) === "/"; }).map(function (s) {
+      return { url: base + s.file, lang: "tr", label: s.label || "Türkçe" };
+    });
+    // hotstream /list/ yalnızca Accept: */* ile yanıt verir
+    return [row("UltraFilmizle", "", stream, { referer: embed, hls: true, headers: { Accept: "*/*" }, subtitles: subs })];
+  }).catch(function () { return []; });
+}
+
+module.exports = { getStreams: getStreams };
