@@ -1967,7 +1967,7 @@ struct ContentView: View {
                     .allowsHitTesting(systemUI.pictureInPictureMessage == nil)
             }
         }
-        .persistentSystemOverlays(systemUI.isPlayerImmersive ? .hidden : .automatic)
+        .hidesPersistentSystemOverlays(systemUI.isPlayerImmersive)
         .statusBarHidden(systemUI.isPlayerImmersive)
         .overlay {
             if let message = systemUI.pictureInPictureMessage {
@@ -2020,5 +2020,17 @@ private extension UIColor {
             blue: CGFloat(rgb & 0xFF) / 255,
             alpha: 1
         )
+    }
+}
+
+private extension View {
+    /// `persistentSystemOverlays` is iOS 16+; on iOS 15 the home indicator stays visible.
+    @ViewBuilder
+    func hidesPersistentSystemOverlays(_ hidden: Bool) -> some View {
+        if #available(iOS 16.0, *) {
+            persistentSystemOverlays(hidden ? .hidden : .automatic)
+        } else {
+            self
+        }
     }
 }
