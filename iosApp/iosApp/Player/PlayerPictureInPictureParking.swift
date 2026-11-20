@@ -9,11 +9,18 @@ final class PlayerPictureInPictureParking {
     private struct Parked {
         let route: AppRoute
         let content: UIViewController
-        weak var coordinator: TabNavigationCoordinator?
+        // Typed as AnyObject so the parking API stays visible on iOS 15, where the native navigation never exists.
+        weak var coordinator: AnyObject?
         weak var player: MPVPlayerViewController?
     }
 
-    weak var appCoordinator: AppNavigationCoordinator?
+    private weak var appCoordinatorObject: AnyObject?
+
+    @available(iOS 16.0, *)
+    var appCoordinator: AppNavigationCoordinator? {
+        get { appCoordinatorObject as? AppNavigationCoordinator }
+        set { appCoordinatorObject = newValue }
+    }
 
     private var parked: Parked?
     private var hostView: UIView?
@@ -31,6 +38,7 @@ final class PlayerPictureInPictureParking {
         return parked.player === player
     }
 
+    @available(iOS 16.0, *)
     @discardableResult
     func park(player: MPVPlayerViewController) -> Bool {
         guard parked == nil else { return false }
@@ -65,9 +73,10 @@ final class PlayerPictureInPictureParking {
         return true
     }
 
+    @available(iOS 16.0, *)
     func restore(player: MPVPlayerViewController, completion: @escaping (Bool) -> Void) -> Bool {
         guard let parked, parked.player === player,
-              let coordinator = parked.coordinator,
+              let coordinator = parked.coordinator as? TabNavigationCoordinator,
               let appCoordinator else { return false }
         finishPendingRestore(false)
         pendingRestore = completion
@@ -86,6 +95,7 @@ final class PlayerPictureInPictureParking {
         return true
     }
 
+    @available(iOS 16.0, *)
     func unpark(route: AppRoute, into container: PlayerRouteContainerViewController) -> Bool {
         guard let parked, parked.route === route else { return false }
         self.parked = nil
@@ -141,6 +151,7 @@ final class PlayerPictureInPictureParking {
     }
 }
 
+@available(iOS 16.0, *)
 final class PlayerRouteContainerViewController: UIViewController {
     let route: AppRoute
     weak var coordinator: TabNavigationCoordinator?

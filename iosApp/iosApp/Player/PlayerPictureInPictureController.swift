@@ -352,7 +352,7 @@ final class PlayerPictureInPictureController: NSObject,
         restoreInlineIfReady()
         let parks = parksOnStart
         parksOnStart = false
-        if parks, !isBackground, !shouldReturnToInline,
+        if #available(iOS 16.0, *), parks, !isBackground, !shouldReturnToInline,
            UIApplication.shared.applicationState == .active, let owner {
             MainActor.assumeIsolated { _ = PlayerPictureInPictureParking.shared.park(player: owner) }
         }
@@ -404,7 +404,7 @@ final class PlayerPictureInPictureController: NSObject,
 
     func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
                                    restoreUserInterfaceForPictureInPictureStopWithCompletionHandler completionHandler: @escaping (Bool) -> Void) {
-        if let owner, isParked {
+        if #available(iOS 16.0, *), let owner, isParked {
             let handled = MainActor.assumeIsolated {
                 PlayerPictureInPictureParking.shared.restore(player: owner) { [weak self] restored in
                     guard let self else { completionHandler(false); return }
