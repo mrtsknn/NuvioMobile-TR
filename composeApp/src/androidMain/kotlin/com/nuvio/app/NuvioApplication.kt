@@ -16,6 +16,8 @@ import com.nuvio.app.core.network.SharedOkHttpClient
 import com.nuvio.app.core.network.NetworkErrorInterceptor
 import com.nuvio.app.core.poster.BrowserImageHeadersInterceptor
 import com.nuvio.app.core.poster.CustomPosterFallbackInterceptor
+import com.nuvio.app.features.servers.plex.PlexArtworkInterceptor
+import com.nuvio.app.features.servers.silo.SiloArtworkInterceptor
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 
@@ -41,6 +43,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
                 add(CustomPosterFallbackInterceptor())
                 // Plugin sites (DiziBox etc.) reject okhttp's default User-Agent on poster requests.
                 add(BrowserImageHeadersInterceptor())
+                add(PlexArtworkInterceptor())
+                add(SiloArtworkInterceptor())
                 add(SvgDecoder.Factory())
                 add(
                     KtorNetworkFetcherFactory(

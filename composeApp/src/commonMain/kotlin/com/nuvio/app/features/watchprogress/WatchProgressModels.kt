@@ -7,10 +7,12 @@ import com.nuvio.app.features.cloud.cloudLibraryProviderPosterUrl
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.tracking.TrackingAttributedItem
 import com.nuvio.app.features.tracking.WatchProgressSource
+import com.nuvio.app.features.watching.domain.WatchedThresholdSettings
 import com.nuvio.app.features.watching.domain.WatchingContentRef
 import kotlinx.serialization.Serializable
 
-internal const val WatchProgressCompletionPercentThreshold = 90f
+internal val WatchProgressCompletionPercentThreshold: Float
+    get() = WatchedThresholdSettings.currentPercent().toFloat()
 internal const val WatchProgressSourceLocal = "local"
 internal const val WatchProgressSourceTraktPlayback = "trakt_playback"
 internal const val WatchProgressSourceTraktHistory = "trakt_history"
@@ -29,6 +31,13 @@ enum class ContinueWatchingSortMode {
     DEFAULT,
     STREAMING_STYLE,
     SPLIT_UPCOMING,
+}
+
+@Serializable
+enum class ContinueWatchingClickAction {
+    STREAM,
+    DETAILS,
+    DETAILS_FOR_UPCOMING,
 }
 
 @Serializable
@@ -244,19 +253,14 @@ data class ContinueWatchingPreferencesUiState(
     val dismissedNextUpKeys: Set<String> = emptySet(),
     val showResumePromptOnLaunch: Boolean = true,
     val sortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT,
+    val clickAction: ContinueWatchingClickAction = ContinueWatchingClickAction.STREAM,
 )
 
 internal fun nextUpDismissKey(
     contentId: String,
     seasonNumber: Int?,
     episodeNumber: Int?,
-): String = buildString {
-    append(contentId.trim())
-    append("|")
-    append(seasonNumber ?: -1)
-    append("|")
-    append(episodeNumber ?: -1)
-}
+): String = contentId.trim()
 
 internal fun WatchProgressEntry.toContinueWatchingItem(): ContinueWatchingItem {
     val normalizedEntry = normalizedCompletion()

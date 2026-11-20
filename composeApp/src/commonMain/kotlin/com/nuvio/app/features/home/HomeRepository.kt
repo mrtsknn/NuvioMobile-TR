@@ -101,13 +101,22 @@ object HomeRepository {
         activeJob?.cancel()
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         activeJob = scope.launch {
+            val settingsSnapshot = HomeCatalogSettingsRepository.snapshot()
             val prioritizedRequests = prioritizeDefinitions(
                 definitions = requests,
-                snapshot = HomeCatalogSettingsRepository.snapshot(),
+                snapshot = settingsSnapshot,
             )
             val loadedSections = linkedMapOf<String, HomeCatalogSection>().apply {
                 putAll(cachedSections)
             }
+            val heroSourceKeys = prioritizedRequests
+                .filter { definition ->
+                    settingsSnapshot.heroEnabled &&
+                        settingsSnapshot.preferences[definition.key]?.heroSourceEnabled != false
+                }
+                .mapTo(mutableSetOf(), HomeCatalogDefinition::cacheKey)
+            val attemptedKeys = mutableSetOf<String>()
+            var heroSourcesPublished = false
             var firstErrorMessage: String? = null
             var publishedOnce = false
             var lastPublishMark = TimeSource.Monotonic.markNow()
@@ -135,15 +144,23 @@ object HomeRepository {
                 if (firstErrorMessage == null) {
                     firstErrorMessage = result.exceptionOrNull()?.message
                 }
+                attemptedKeys += request.cacheKey
+                val heroSourcesResolved = attemptedKeys.containsAll(heroSourceKeys)
                 cachedSections = loadedSections.toMap()
                 lastErrorMessage = firstErrorMessage
-                if (!publishedOnce || lastPublishMark.elapsedNow().inWholeMilliseconds >= HOME_CATALOG_PUBLISH_THROTTLE_MS) {
+                if (
+                    !publishedOnce ||
+                    lastPublishMark.elapsedNow().inWholeMilliseconds >= HOME_CATALOG_PUBLISH_THROTTLE_MS ||
+                    (heroSourcesResolved && !heroSourcesPublished)
+                ) {
                     publishedOnce = true
                     lastPublishMark = TimeSource.Monotonic.markNow()
                     publishCurrentState(
                         isLoading = true,
                         requestKey = requestKey,
+                        heroSourcesResolved = heroSourcesResolved,
                     )
+                    heroSourcesPublished = heroSourcesResolved
                 }
             }
 
@@ -249,6 +266,7 @@ object HomeRepository {
         isLoading: Boolean,
         requestKey: String?,
         keepVisibleHeroWhilePending: Boolean = true,
+        heroSourcesResolved: Boolean = !isLoading,
     ) {
         if (currentDefinitions.isEmpty() && cachedSections.isNotEmpty()) return
         val snapshot = HomeCatalogSettingsRepository.snapshot()
@@ -262,7 +280,7 @@ object HomeRepository {
             copy(items = items.reapplyCustomPosterUrls(posterPattern))
 
         val entries = currentDefinitions
-            .sortedBy { definition -> preferences[definition.key]?.order ?: Int.MAX_VALUE }
+            .let { orderHomeCatalogDefinitions(it, snapshot) }
             .mapNotNull { definition ->
                 val preference = preferences[definition.key]
                 if (preference?.enabled == false) return@mapNotNull null
@@ -282,26 +300,37 @@ object HomeRepository {
         }
         val sections = entries.map { (_, section) -> section }
 
-        val catalogHeroItems = if (snapshot.heroEnabled) {
-            val heroRandom = Random((requestKey?.hashCode() ?: 0).absoluteValue + 1)
+        if (snapshot.heroEnabled && !heroSourcesResolved) {
+            _uiState.value = HomeUiState(
+                isLoading = isLoading,
+                heroItems = _uiState.value.heroItems,
+                sections = sections,
+                errorMessage = if (sections.isEmpty()) lastErrorMessage else null,
+            )
+            return
+        }
+
+        val heroSourceItems = if (snapshot.heroEnabled) {
             currentDefinitions
                 .filter { definition -> preferences[definition.key]?.heroSourceEnabled != false }
                 .mapNotNull { definition -> cachedSections[definition.cacheKey] }
                 .map { section -> section.withPosterOverlay().withReleaseFilter() }
                 .flatMap { section -> section.items }
                 .distinctBy { item -> "${item.type}:${item.id}" }
-                .shuffled(heroRandom)
-                .take(HOME_HERO_ITEM_LIMIT)
         } else {
             emptyList()
         }
+        val catalogHeroItems = heroSourceItems
+            .shuffled(Random((requestKey?.hashCode() ?: 0).absoluteValue + 1))
+            .take(HOME_HERO_ITEM_LIMIT)
         lastPublishedCatalogHeroEmpty = snapshot.heroEnabled && catalogHeroItems.isEmpty()
         val visibleHeroItems = _uiState.value.heroItems
         val heroItems = if (snapshot.heroEnabled) {
             if (
                 keepVisibleHeroWhilePending &&
                 visibleHeroItems.isNotEmpty() &&
-                isHeroResolutionPending(isLoading)
+                isHeroResolutionPending(isLoading) &&
+                (catalogHeroItems.isEmpty() || visibleHeroItems.allComeFrom(heroSourceItems))
             ) {
                 visibleHeroItems
             } else {
@@ -581,4 +610,9 @@ private fun prioritizeDefinitions(
         }
     }
     return priority + remainder
+}
+
+private fun List<MetaPreview>.allComeFrom(sourceItems: List<MetaPreview>): Boolean {
+    val sourceKeys = sourceItems.mapTo(HashSet()) { item -> "${item.type}:${item.id}" }
+    return all { item -> "${item.type}:${item.id}" in sourceKeys }
 }

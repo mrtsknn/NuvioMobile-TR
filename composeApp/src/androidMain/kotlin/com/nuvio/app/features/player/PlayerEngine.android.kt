@@ -1886,7 +1886,7 @@ private fun ExoPlayerSurface(
             },
         )
         StyledSubtitleOverlay(
-            subtitlePresenter.text,
+            subtitlePresenter.cues,
             currentSubtitleStyle,
             videoAspectRatio = videoAspectRatio,
             videoResizeMode = resizeMode,
@@ -2052,6 +2052,7 @@ private fun LibmpvPlayerSurface(
             override fun event(eventId: Int, data: MPVNode) {
                 when (eventId) {
                     MPV.mpvEvent.MPV_EVENT_START_FILE -> {
+                        view.onFileStarted()
                         errorLog.clear()
                         Log.i(
                             PLAYER_DIAGNOSTIC_TAG,
@@ -2067,7 +2068,10 @@ private fun LibmpvPlayerSurface(
                     }
                     MPV.mpvEvent.MPV_EVENT_FILE_LOADED,
                     MPV.mpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
-                        if (eventId == MPV.mpvEvent.MPV_EVENT_FILE_LOADED) view.attachStartupSubtitles()
+                        if (eventId == MPV.mpvEvent.MPV_EVENT_FILE_LOADED) {
+                            view.onFileLoaded()
+                            view.attachStartupSubtitles()
+                        }
                         coroutineScope.launch(Dispatchers.Main.immediate) {
                             InAppLogger.info(
                                 "MPV/Android",
@@ -2288,7 +2292,7 @@ private fun LibmpvPlayerSurface(
         )
         playerViewRef?.let { view ->
             StyledSubtitleOverlay(
-                view.subtitleText,
+                view.subtitleCues,
                 view.subtitleStyle,
                 videoAspectRatio = view.subtitleVideoAspectRatio,
                 videoResizeMode = resizeMode,
@@ -2343,12 +2347,15 @@ private class NuvioLibmpvView(
 
     @Volatile
     private var libmpvVolumeLevel = 1f
+    /** mpv has opened the current file and read its tracks. */
+    @Volatile
+    private var fileLoaded = false
     @Volatile
     private var latestAudioTracks: List<LibmpvTrack> = emptyList()
     @Volatile
     private var latestSubtitleTracks: List<LibmpvTrack> = emptyList()
 
-    var subtitleText by mutableStateOf("")
+    var subtitleCues by mutableStateOf(StyledSubtitleCues())
         private set
     var subtitleStyle by mutableStateOf(SubtitleStyleState.DEFAULT)
         private set
@@ -2365,11 +2372,16 @@ private class NuvioLibmpvView(
                 mpv.setPropertyBoolean("sub-visibility", !styled)
                 styledSubtitleVisible = styled
             }
-            val text = if (styled) mpv.getPropertyString("sub-text").orEmpty() else ""
+            val text = if (styled) {
+                mpv.getPropertyString("sub-text/ass") ?: mpv.getPropertyString("sub-text").orEmpty()
+            } else {
+                ""
+            }
+            val cues = parseMpvSubtitleText(text)
             val style = appliedSubtitleStyle
             post {
                 if (!released.get()) {
-                    subtitleText = text
+                    subtitleCues = cues
                     subtitleStyle = style
                 }
             }
@@ -2382,7 +2394,7 @@ private class NuvioLibmpvView(
             "Initializing libmpv vo=${videoOutput.mpvValue} hwdec=${if (hardwareDecodingEnabled) "auto" else "no"} yuv420p=$yuv420pEnabled " +
                 "animeShaders=${animeShaderPaths.joinToString(",") { it.substringAfterLast('/') }.ifEmpty { "none" }}",
         )
-        mpv.setOptionString("profile", "fast")
+        mpv.command("apply-profile", "fast")
         mpv.setOptionString("hwdec", if (hardwareDecodingEnabled) "auto" else "no")
         if (yuv420pEnabled) {
             mpv.setOptionString("vf", "format=yuv420p")
@@ -2472,11 +2484,20 @@ private class NuvioLibmpvView(
         applyRequestHeadersNow(currentRequestHeaders)
         setPausedNow(!playWhenReady)
         mpv.setPropertyString("aid", "auto")
+        fileLoaded = false
         mpv.command("loadfile", sourceUrl.toMpvSource(), "replace")
         currentSourceAudioUrl?.takeIf { it.isNotBlank() }?.let { sourceAudioUrl ->
             mpv.command("audio-add", sourceAudioUrl.toMpvSource(), "auto")
         }
         setPausedNow(!playWhenReady)
+    }
+
+    fun onFileStarted() {
+        fileLoaded = false
+    }
+
+    fun onFileLoaded() {
+        fileLoaded = true
     }
 
     fun attachStartupSubtitles() {
@@ -2586,6 +2607,7 @@ private class NuvioLibmpvView(
             ?: 0
         return PlayerPlaybackSnapshot(
             isLoading = isLoading,
+            isOpening = !fileLoaded,
             isPlaying = !paused && !isLoading && !idle && !ended,
             isEnded = ended,
             durationMs = durationMs,
@@ -3485,8 +3507,11 @@ private fun ExoPlayer.snapshot(
     mediaInfoCache: ExoMediaInfoCache? = null,
 ): PlayerPlaybackSnapshot {
     val (videoWidth, videoHeight) = videoDimensions()
+    val isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
     return PlayerPlaybackSnapshot(
-        isLoading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING,
+        isLoading = isLoading,
+        // Tracks are known once the source is opened and its container read.
+        isOpening = isLoading && currentTracks.isEmpty,
         isPlaying = isPlaying,
         isEnded = playbackState == Player.STATE_ENDED,
         durationMs = duration.coerceAtLeast(0L),

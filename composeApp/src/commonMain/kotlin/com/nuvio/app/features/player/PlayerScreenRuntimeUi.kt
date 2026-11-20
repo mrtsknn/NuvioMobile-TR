@@ -8,6 +8,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -368,6 +369,9 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi(
                         if (message != null && tryRefreshExpiredLinkAfterError(message)) {
                             return@PlatformPlayerSurface
                         }
+                        if (message != null && tryFallbackToNextSourceAfterError(message)) {
+                            return@PlatformPlayerSurface
+                        }
                         // Engine failover is decided here, driven by its own player setting;
                         // the engine's own decoder/MIME retries have already been tried.
                         if (message != null && maybeFailoverPlaybackEngine(resolvedAutoEngine)) {
@@ -556,7 +560,6 @@ private fun PlayerScreenRuntime.RenderPlayerControls(
             onRuntimeClick = { showRemainingTime = !showRemainingTime },
             releaseInfo = metaUiState.meta?.takeIf { it.id == parentMetaId }?.releaseInfo,
             badges = playerBadges,
-            hideDetails = activeSkipInterval != null && !skipIntervalDismissed,
             onNextEpisodeClick = if (nextEpisodeInfo?.hasAired == true && !nextEpisodeAutoPlaySearching && nextEpisodeAutoPlayCountdown == null) {
                 {
                     if (!partyBlocksControl()) playNextEpisode()
@@ -855,7 +858,7 @@ private fun BoxScope.RenderPlaybackOverlays(
             p2pInitialLoadingMessage ?: playerLoadingStatusMessage(
                 showStatus = true,
                 controllerReady = playerController != null,
-                buffering = snapshotIsLoading,
+                snapshot = playbackSnapshot,
             )
         } else null,
         openingNetworkSpeed = networkSpeedText,
@@ -1315,7 +1318,7 @@ private const val MOVIE_RECOMMENDATION_LIMIT = 10
 internal val PlayerScreenRuntime.movieRecommendationCandidates: List<MetaPreview>
     get() {
         val watchedKeys = watchedUiState.watchedKeys
-        return playerMeta?.moreLikeThis.orEmpty()
+        return (playerMoreLikeThis ?: playerMeta?.moreLikeThis).orEmpty()
             .asSequence()
             .filterNot { it.id == parentMetaId }
             .filterNot { WatchingState.isPosterWatched(watchedKeys = watchedKeys, item = it) }

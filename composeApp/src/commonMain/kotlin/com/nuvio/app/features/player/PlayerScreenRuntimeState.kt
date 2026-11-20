@@ -1,5 +1,6 @@
 package com.nuvio.app.features.player
 
+import com.nuvio.app.features.home.MetaPreview
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,6 +8,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.features.addons.AddonPlayerAction
+import com.nuvio.app.features.addons.AddonPlayerEventTarget
 import com.nuvio.app.features.addons.AddonsUiState
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsUiState
@@ -205,6 +208,8 @@ internal class PlayerScreenRuntime(
     var pendingSeekScrobbleRestart by mutableStateOf(false)
     var hasSentCompletionScrobbleForCurrentItem by mutableStateOf(false)
     var currentTrackingMedia by mutableStateOf<TrackingMediaReference?>(null)
+    var activeAddonPlayerEventTarget: AddonPlayerEventTarget? = null
+    var lastAddonPlayerAction: AddonPlayerAction? = null
 
     var showSourcesPanel by mutableStateOf(false)
     var showQualityPanel by mutableStateOf(false)
@@ -225,6 +230,7 @@ internal class PlayerScreenRuntime(
     var episodeStreamsPanelState by mutableStateOf(EpisodeStreamsPanelState())
     var playerMetaVideos by mutableStateOf<List<MetaVideo>>(emptyList())
     var playerMeta by mutableStateOf<MetaDetails?>(null)
+    var playerMoreLikeThis by mutableStateOf<List<MetaPreview>?>(null)
     val isAnimePlayback: Boolean
         get() {
             val genres = playerMeta?.genres.orEmpty()
@@ -263,6 +269,11 @@ internal class PlayerScreenRuntime(
     var credentialRefreshAttemptedSourceUrl by mutableStateOf<String?>(null)
     /** URL opened from the reuse-last-link cache; it is refreshed after a playback error even without a token. */
     var linkCacheSourceUrl: String? = args.sourceUrl.takeIf { args.sourceFromLinkCache && it.isNotBlank() }
+    /** URL picked by auto source selection; only this source falls back to the next match on failure. */
+    var autoSelectedSourceUrl: String? = args.sourceUrl.takeIf { args.sourceAutoSelected && it.isNotBlank() }
+    var sourceFallbackAttempts = 0
+    val sourceFallbackTriedKeys = mutableSetOf<String>()
+    var sourceFallbackJob: Job? = null
 
     var showAudioModal by mutableStateOf(false)
     var showSubtitleModal by mutableStateOf(false)
