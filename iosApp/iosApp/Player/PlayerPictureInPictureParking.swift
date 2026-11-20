@@ -108,6 +108,7 @@ final class PlayerPictureInPictureParking {
         return true
     }
 
+    @available(iOS 16.0, *)
     func containerDidAppear(_ container: PlayerRouteContainerViewController) {
         guard pendingRestore != nil, parked == nil, container.hasContent else { return }
         finishPendingRestore(true)
