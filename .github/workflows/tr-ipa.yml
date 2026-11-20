@@ -12,6 +12,14 @@ on:
           - Release
           - Debug
         default: Release
+      runner:
+        description: macOS runner (Intel is reliable; arm64 is much faster but has 7 GB RAM)
+        required: true
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-15
+        default: macos-15-intel
       release_tag:
         description: Optional tag (e.g. 0.6.5-tr.1) - publishes a pre-release with the IPA attached
         required: false
@@ -21,15 +29,15 @@ permissions:
   contents: write
 
 concurrency:
-  group: tr-ipa-${{ github.ref }}
+  group: tr-ipa-${{ github.ref }}-${{ inputs.runner }}
   cancel-in-progress: true
 
 jobs:
   build:
     name: Build unsigned ${{ inputs.configuration }} IPA
-    # Hosted Intel runner: arm64 macOS runners often fail to start due to GitHub capacity limits.
-    # The upstream "xcode-27" label is private to luqmanfadlli/NuvioMobile-Enhanced.
-    runs-on: macos-15-intel
+    # Intel (14 GB) is the reliable default; arm64 runners link far faster but have only 7 GB and
+    # sometimes fail to start. The upstream "xcode-27" label is private to luqmanfadlli/NuvioMobile-Enhanced.
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 180
     env:
       GH_TOKEN: ${{ github.token }}
@@ -38,7 +46,8 @@ jobs:
       KOTLIN_DAEMON_JVMARGS: -Xmx1024M
       NUVIO_GRADLE_JVMARGS: -Xmx2048M -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=768M -XX:+UseG1GC
       # Intel runners have 14 GB; linking the iOS framework ran out of heap at 9 GB.
-      NUVIO_KOTLIN_NATIVE_JVMARGS: -Xmx11264M -XX:+UseG1GC
+      # arm64 runners have 7 GB, so their heap relies on macOS swap.
+      NUVIO_KOTLIN_NATIVE_JVMARGS: ${{ inputs.runner == 'macos-15' && '-Xmx10240M -XX:+UseG1GC' || '-Xmx11264M -XX:+UseG1GC' }}
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
       # Read by runtimeConfigValue() in composeApp/build.gradle.kts when local.properties lacks them.
       NUVIO_SUPABASE_URL: ${{ secrets.NUVIO_SUPABASE_URL }}
@@ -66,6 +75,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # Write the cache from tr too; by default only the default branch (enhanced) writes it.
+          cache-read-only: false
 
       - name: Cache Kotlin Native
         uses: actions/cache@v5
