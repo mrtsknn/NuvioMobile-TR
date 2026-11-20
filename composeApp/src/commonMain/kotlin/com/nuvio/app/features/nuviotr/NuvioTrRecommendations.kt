@@ -213,6 +213,10 @@ fun NuvioTrRecommendedSection(
                                     message = when (kind) {
                                         NuvioTrKind.Catalogs -> when (val result = AddonRepository.addAddon(entry.manifestUrl)) {
                                             is AddAddonResult.Success -> null
+                                            is AddAddonResult.TrackingConsentRequired -> {
+                                                AddonRepository.requestTrackingConsent(result.manifest)
+                                                null
+                                            }
                                             is AddAddonResult.Error -> result.message
                                         }
                                         NuvioTrKind.Plugins -> when (val result = PluginRepository.addRepository(entry.manifestUrl)) {
