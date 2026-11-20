@@ -1,4 +1,4 @@
-# Nuvio Mobile TR - v0.6.12-tr.3
+# Nuvio Mobile TR - v1.1.0-tr.1
 
 Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 
@@ -11,27 +11,24 @@ Türkçe içerik desteğiyle güçlendirilmiş mobil sürüm!
 - **Eklenti Ayarları:** Değişen alan adlarını uygulama içinden güncelleyip test edebilme.
 
 ### 🆕 Bu Sürümde Yenilikler
-- **Daha Hızlı Kaynak Açılışı:** Kaynaklar aynı anda çok daha fazla eklentide aranır; yanıt vermeyen siteler beklenmeden atlanır, ilk kaynaklar saniyeler içinde gelir.
-- **Film / Dizi Önceliği:** Eklenti ayarlarından her kaynağı film veya dizi için öncelikli işaretleyebilirsiniz; öncelikli kaynaklar önce aranır ve listenin en üstünde gösterilir.
-- **Hesapla Giriş ve Senkronizasyon:** Kitaplık, izleme geçmişi ve "İzlemeye Devam" tüm cihazlarda eşitlenir.
-- **Oynatıcı:** Bölüm (chapter) desteği, canlı yayınlarda kalite seçici, canlı yayın donma ve siyah ekran düzeltmeleri.
-- **Blu-ray Desteği:** ISO / BDMV / M2TS dosyalarını oynatabilme.
-- **Altyazı:** Cihaza özel altyazı tercihleri; gölge, kontur ve bulanıklık ayarları; zorunlu altyazı ve otomatik senkron varsayılan olarak açık.
-- **Mini Oynatıcı:** Uygulamada gezinirken izlemeye devam edebilme.
-- **Performans:** Daha hızlı ileri sarma önizlemeleri, iOS'ta yüksek çözünürlüklü ve uzun oturumlarda bellek iyileştirmeleri.
-- **Güncel Öneri Listesi:** Önerilen eklenti ve kataloglar güncel listeden gelir; yeni eklentiler ve katalog eklendi.
+- **iOS 15 Desteği:** Uygulama artık iOS 15 yüklü iPhone ve iPad'lerde de çalışır. (iOS 15'te sekme çubuğu farklı görünür, indirme Live Activity bildirimi gösterilmez.)
+- **Akıllı Kaynak Seçimi:** Kaynaklar cihazın oynatabildiği formata, HDR desteğine ve tercih edilen ses diline göre sıralanır; akıllı otomatik oynatma en iyi kaynağı seçer, açılmazsa sıradakine geçer.
+- **Plex ve Silo:** Kendi medya sunucunuzu bağlayabilirsiniz.
+- **Stremio Takip Eklentileri:** Oynatıcı ve kütüphane takip eklentileri desteklenir (kurulumda onay istenir).
+- **İndirmeler:** Yenilenen indirmeler ekranı, tek dokunuşla sezon indirme ve depolama yönetimi.
+- **Oynatıcı:** Bir içeriğin ne zaman "izlendi" sayılacağını seçebilme, klavye desteği, iOS'ta Picture in Picture modunda Dolby Vision.
+- **Altyazı:** Kontur kalınlığı ayarı; renk ve konum ayarları korunur.
+- **Kütüphane ve Ana Sayfa:** Tür, yıl ve izlendi filtreleri; ana sayfa satırlarını sabitleme ve gizleme; yatayda daha fazla poster.
+- **Yeni Diller:** Ukraynaca ve Basitleştirilmiş Çince.
 
 ### 🛠️ Düzeltmeler
-- Kataloglarda içerik açıldığında seçilen kaynak, uygulama yeniden açılsa da korunur.
-- Başlıklardaki Türkçe karakter sorunu (ç, ö, ü...) giderildi.
-- Bazı eklentilerde yüklenmeyen posterler artık görünüyor.
-- Eklenti aramalarında karışık başlıklar, boş kartlar ve çalışmayan aramalar düzeltildi.
+- Nuvio Enhanced ana projesindeki onlarca hata düzeltmesi eklendi (indirme ilerlemesi, uzun ekran başlıkları, iOS'ta altyazı bellek kullanımı ve daha fazlası).
 
 ### 📦 İndirme Seçenekleri
-- **`Nuvio-TR-0.6.12-universal.apk`**: Tüm Android cihazlar ile uyumlu evrensel APK.
-- **`Nuvio-TR-0.6.12-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için (önerilen).
-- **`Nuvio-TR-0.6.12-armeabi-v7a.apk`**: Eski 32-bit Android cihazlar için.
-- **`Nuvio-TR-0.6.12-x86_64.apk`**: Emülatörler ve x86_64 sistemler için.
-- **`nuvio-tr-0.6.12-tr.3-release.ipa`**: iOS cihazlar için (AltStore, SideStore veya Sideloadly ile yüklenebilir).
+- **`Nuvio-TR-1.1.0-universal.apk`**: Tüm Android cihazlar ile uyumlu evrensel APK.
+- **`Nuvio-TR-1.1.0-arm64-v8a.apk`**: Güncel 64-bit Android telefon ve tabletler için (önerilen).
+- **`Nuvio-TR-1.1.0-armeabi-v7a.apk`**: Eski 32-bit Android cihazlar için.
+- **`Nuvio-TR-1.1.0-x86_64.apk`**: Emülatörler ve x86_64 sistemler için.
+- **`nuvio-tr-1.1.0-tr.1-release.ipa`**: iOS 15 ve üzeri iPhone / iPad için (AltStore, SideStore veya Sideloadly ile yüklenebilir).
 
 💡 Önceki sürümü kullananlar yeni APK'yı doğrudan üzerine kurabilir; veriler korunur.
