@@ -399,6 +399,7 @@ extension AppRoute {
     var keepsTabBar: Bool { self is SettingsDestinationRoute }
 }
 
+@available(iOS 16.0, *)
 extension Array where Element == RouteWrapper {
     var keepsTabBar: Bool { allSatisfy { $0.route.keepsTabBar } }
 }
@@ -1577,8 +1578,10 @@ private extension View {
         if #available(iOS 26.0, *) {
             toolbarBackground(.hidden, for: .tabBar)
                 .scrollEdgeEffectHidden(true, for: .bottom)
-        } else {
+        } else if #available(iOS 16.0, *) {
             toolbarBackground(.hidden, for: .tabBar)
+        } else {
+            self
         }
     }
 
