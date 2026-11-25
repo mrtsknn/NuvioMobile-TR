@@ -22,6 +22,15 @@ Bu klasör, CloudStream (`.cs3`) Türkçe eklentilerinin **NuvioTR (iOS + Androi
 3. NuvioTR uygulamasında **Ayarlar ➔ Eklentiler ➔ Depo Ekle** kısmına bu bağlantıyı yapıştırın.
 4. Uygulama `SkyStreamPackage.kt` üzerinden tüm eklentileri otomatik olarak kuracaktır.
 
+## 🛠️ Geliştirme
+
+Kaynak kodlar `src/` altındadır; kök dizindeki `.js` dosyaları `build.py` ile **üretilir**, elle düzenlemeyin.
+
+- `src/_lib.js`: ortak yardımcılar ve oynatıcı çözücüleri (FirePlayer, pichive, RapidVid, vidmoly/jwplayer, genel m3u8).
+- `src/<eklenti>.js`: siteye özel arama, ana sayfa, bölüm listesi ve akış çıkarma.
+
+Önce `python skystream-plugins/build.py`, sonra aşağıdaki paketleme komutunu çalıştırın. Uygulamanın yeni kodu çekmesi için `plugins.json` içindeki `version` alanını artırın.
+
 ## 🛠️ Yeniden Paketleme
 
 Eğer `.js` dosyalarında bir değişiklik yaparsanız:
